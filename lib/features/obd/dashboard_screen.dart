@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../core/theme.dart';
 import '../../core/router.dart';
+import '../../shared/widgets/warning_banner.dart';
+import '../../shared/widgets/custom_button.dart';
 
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({super.key});
@@ -98,7 +100,16 @@ class DashboardScreen extends StatelessWidget {
                 ],
               ),
 
-              const SizedBox(height: 32),
+              const SizedBox(height: 16),
+
+              // Banner de advertencia mock
+              WarningBanner(
+                message: 'Se detectaron 3 códigos de falla',
+                severity: 'urgent',
+                onTap: () => Navigator.pushNamed(context, AppRouter.diagnosis),
+              ),
+
+              const SizedBox(height: 24),
 
               Text(
                 'Acciones rápidas',
@@ -106,29 +117,22 @@ class DashboardScreen extends StatelessWidget {
               ),
               const SizedBox(height: 16),
 
-              ElevatedButton.icon(
+              CustomButton(
+                label: 'Leer códigos de falla',
+                icon: Icons.search_outlined,
                 onPressed: () =>
                     Navigator.pushNamed(context, AppRouter.diagnosis),
-                icon: const Icon(Icons.search_outlined),
-                label: const Text('Leer códigos de falla'),
               ),
 
               const SizedBox(height: 12),
 
-              /*OutlinedButton.icon(
+              CustomButton(
+                label: 'Ver historial',
+                icon: Icons.history_outlined,
+                isOutlined: true,
                 onPressed: () =>
-                    Navigator.pushNamed(context, AppRouter.cameraScan),
-                icon: const Icon(Icons.camera_alt_outlined),
-                label: const Text('Escanear tablero'),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: AppTheme.textPrimary,
-                  minimumSize: const Size(double.infinity, 52),
-                  side: const BorderSide(color: AppTheme.textHint),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-              ),*/
+                    Navigator.pushNamed(context, AppRouter.history),
+              ),
             ],
           ),
         ),
