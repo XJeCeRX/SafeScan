@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../core/theme.dart';
 import '../../core/router.dart';
+import '../../shared/widgets/status_card.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -27,35 +28,10 @@ class HomeScreen extends StatelessWidget {
               const SizedBox(height: 40),
 
               // Estado de conexión
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: AppTheme.surface,
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 12,
-                      height: 12,
-                      decoration: const BoxDecoration(
-                        color: AppTheme.textHint,
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Text(
-                      'Sin conexión OBD',
-                      style: Theme.of(context).textTheme.bodyMedium,
-                    ),
-                    const Spacer(),
-                    TextButton(
-                      onPressed: () =>
-                          Navigator.pushNamed(context, AppRouter.connection),
-                      child: const Text('Conectar'),
-                    ),
-                  ],
-                ),
+              StatusCard(
+                isConnected: false,
+                onConnectTap: () =>
+                    Navigator.pushNamed(context, AppRouter.connection),
               ),
 
               const SizedBox(height: 32),
