@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import '../../core/theme.dart';
 
 class HistoryScreen extends StatelessWidget {
-  const HistoryScreen({super.key});
+  final VoidCallback? onBackToHome;
+
+  const HistoryScreen({super.key, this.onBackToHome});
 
   @override
   Widget build(BuildContext context) {
@@ -12,7 +14,13 @@ class HistoryScreen extends StatelessWidget {
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new_outlined),
-          onPressed: () => Navigator.pop(context),
+          onPressed: () {
+            if (Navigator.canPop(context)) {
+              Navigator.pop(context);
+            } else {
+              onBackToHome?.call();
+            }
+          },
         ),
         title: Text('Historial', style: Theme.of(context).textTheme.titleLarge),
       ),
