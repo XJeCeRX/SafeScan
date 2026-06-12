@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-import '../../core/theme.dart';
+
 import '../../core/router.dart';
 import '../../shared/widgets/status_card.dart';
+import '../../shared/widgets/custom_button.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -25,7 +26,7 @@ class HomeScreen extends StatelessWidget {
                 style: Theme.of(context).textTheme.bodyMedium,
               ),
 
-              const SizedBox(height: 40),
+              const SizedBox(height: 32),
 
               // Estado de conexión
               StatusCard(
@@ -36,29 +37,22 @@ class HomeScreen extends StatelessWidget {
 
               const SizedBox(height: 32),
 
-              /* Botón escanear tablero
-              ElevatedButton.icon(
-                onPressed: () => Navigator.pushNamed(
-                    context, AppRouter.cameraScan),
-                icon: const Icon(Icons.camera_alt_outlined),
-                label: const Text('Escanear tablero'),
-              ),*/
-              const SizedBox(height: 16),
-
-              // Botón leer códigos OBD
-              OutlinedButton.icon(
+              // Botones
+              CustomButton(
+                label: 'Leer códigos OBD',
+                icon: Icons.search_outlined,
                 onPressed: () =>
                     Navigator.pushNamed(context, AppRouter.diagnosis),
-                icon: const Icon(Icons.search_outlined),
-                label: const Text('Leer códigos OBD'),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: AppTheme.textPrimary,
-                  minimumSize: const Size(double.infinity, 52),
-                  side: const BorderSide(color: AppTheme.textHint),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
+              ),
+
+              const SizedBox(height: 12),
+
+              CustomButton(
+                label: 'Ver historial',
+                icon: Icons.history_outlined,
+                isOutlined: true,
+                onPressed: () =>
+                    Navigator.pushNamed(context, AppRouter.history),
               ),
             ],
           ),
