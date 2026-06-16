@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import '../../core/theme.dart';
+import '../../core/services/obd_manager.dart';
 import '../../features/home/home_screen.dart';
 import '../../features/diagnosis/diagnosis_screen.dart';
 import '../../features/history/history_screen.dart';
 
 class MainScaffold extends StatefulWidget {
-  const MainScaffold({super.key});
+  final ObdManager obdManager;
+
+  const MainScaffold({super.key, required this.obdManager});
 
   @override
   State<MainScaffold> createState() => _MainScaffoldState();
@@ -24,11 +27,20 @@ class _NavItem {
 
 class _MainScaffoldState extends State<MainScaffold> {
   int _currentIndex = 0;
-  final PageController _pageController = PageController(initialPage: 0);
+  late final PageController _pageController;
+
+  @override
+  void initState() {
+    super.initState();
+    _pageController = PageController(initialPage: 0);
+  }
 
   List<Widget> get _screens => [
-    HomeScreen(onTabChanged: _onTabTapped),
-    DiagnosisScreen(onBackToHome: () => _onTabTapped(0)),
+    HomeScreen(obdManager: widget.obdManager, onTabChanged: _onTabTapped),
+    DiagnosisScreen(
+      obdManager: widget.obdManager,
+      onBackToHome: () => _onTabTapped(0),
+    ),
     HistoryScreen(onBackToHome: () => _onTabTapped(0)),
   ];
 

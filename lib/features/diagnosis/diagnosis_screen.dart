@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
 import '../../core/theme.dart';
+import '../../core/services/obd_manager.dart';
+import '../../core/models/obd_data.dart';
+import '../../shared/widgets/custom_button.dart';
 
 class DiagnosisScreen extends StatefulWidget {
+  final ObdManager? obdManager;
   final VoidCallback? onBackToHome;
 
-  const DiagnosisScreen({super.key, this.onBackToHome});
+  const DiagnosisScreen({super.key, this.obdManager, this.onBackToHome});
 
   @override
   State<DiagnosisScreen> createState() => _DiagnosisScreenState();
@@ -15,33 +19,9 @@ class _DiagnosisScreenState extends State<DiagnosisScreen>
   late AnimationController _controller;
   final List<Animation<Offset>> _slideAnimations = [];
   final List<Animation<double>> _fadeAnimations = [];
+  bool _scanning = false;
 
-  static const List<Map<String, dynamic>> _mockCodes = [
-    {
-      'code': 'P0300',
-      'issue': 'Fallo en cilindros',
-      'explanation':
-          'Tu motor está fallando en uno o más cilindros. Puede sentirse como vibración o pérdida de potencia.',
-      'severity': 'urgent',
-      'recommendation': 'Ve a un taller lo antes posible.',
-    },
-    {
-      'code': 'P0171',
-      'issue': 'Mezcla de combustible pobre',
-      'explanation':
-          'El motor está recibiendo muy poco combustible o demasiado aire. Puede aumentar el consumo.',
-      'severity': 'medium',
-      'recommendation': 'Revisa el filtro de aire y los inyectores.',
-    },
-    {
-      'code': 'P0420',
-      'issue': 'Eficiencia del catalizador baja',
-      'explanation':
-          'El catalizador no está funcionando al 100%. No es urgente pero debe revisarse pronto.',
-      'severity': 'low',
-      'recommendation': 'Puedes seguir manejando, pero agenda una revisión.',
-    },
-  ];
+  ObdManager get _obd => widget.obdManager!;
 
   @override
   void initState() {
@@ -50,11 +30,20 @@ class _DiagnosisScreenState extends State<DiagnosisScreen>
       vsync: this,
       duration: const Duration(milliseconds: 800),
     );
+    _setupAnimations();
+  }
 
-    for (int i = 0; i < _mockCodes.length; i++) {
+  void _setupAnimations() {
+    final codes = _obd.dtcCodes;
+    if (codes.isEmpty) {
+      _controller.forward();
+      return;
+    }
+    _slideAnimations.clear();
+    _fadeAnimations.clear();
+    for (int i = 0; i < codes.length; i++) {
       final start = i * 0.2;
       final end = start + 0.6;
-
       _slideAnimations.add(
         Tween<Offset>(begin: const Offset(0, 0.3), end: Offset.zero).animate(
           CurvedAnimation(
@@ -63,7 +52,6 @@ class _DiagnosisScreenState extends State<DiagnosisScreen>
           ),
         ),
       );
-
       _fadeAnimations.add(
         Tween<double>(begin: 0, end: 1).animate(
           CurvedAnimation(
@@ -73,8 +61,16 @@ class _DiagnosisScreenState extends State<DiagnosisScreen>
         ),
       );
     }
-
     _controller.forward();
+  }
+
+  Future<void> _scanForCodes() async {
+    setState(() => _scanning = true);
+    await _obd.scanDtc();
+    if (!mounted) return;
+    setState(() => _scanning = false);
+    _controller.reset();
+    _setupAnimations();
   }
 
   @override
@@ -85,111 +81,159 @@ class _DiagnosisScreenState extends State<DiagnosisScreen>
 
   @override
   Widget build(BuildContext context) {
-    final urgent = _mockCodes.where((c) => c['severity'] == 'urgent').length;
-    final medium = _mockCodes.where((c) => c['severity'] == 'medium').length;
-    final low = _mockCodes.where((c) => c['severity'] == 'low').length;
+    return ListenableBuilder(
+      listenable: _obd,
+      builder: (context, _) {
+        final codes = _obd.dtcCodes;
+        final urgent = codes.where((c) => c.severity == 'urgent').length;
+        final medium = codes.where((c) => c.severity == 'medium').length;
+        final low = codes.where((c) => c.severity == 'low').length;
 
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: AppTheme.background,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_outlined),
-          onPressed: () {
-            if (Navigator.canPop(context)) {
-              Navigator.pop(context);
-            } else {
-              widget.onBackToHome?.call();
-            }
-          },
-        ),
-        title: Text(
-          'Diagnóstico',
-          style: Theme.of(context).textTheme.titleLarge,
-        ),
-      ),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Resumen de severidades
-              Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: AppTheme.surface,
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Resumen del escaneo',
-                      style: Theme.of(context).textTheme.titleMedium,
-                    ),
-                    const SizedBox(height: 16),
-                    Row(
-                      children: [
-                        _SeveritySummary(
-                          count: urgent,
-                          label: 'Urgente',
-                          color: AppTheme.severityUrgent,
-                        ),
-                        const SizedBox(width: 12),
-                        _SeveritySummary(
-                          count: medium,
-                          label: 'Moderado',
-                          color: AppTheme.severityMedium,
-                        ),
-                        const SizedBox(width: 12),
-                        _SeveritySummary(
-                          count: low,
-                          label: 'Leve',
-                          color: AppTheme.severityLow,
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 24),
-
-              Text(
-                'Códigos detectados',
-                style: Theme.of(context).textTheme.titleLarge,
-              ),
-              const SizedBox(height: 14),
-
-              // Lista animada
-              ListView.separated(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: _mockCodes.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 12),
-                itemBuilder: (context, index) {
-                  return SlideTransition(
-                    position: _slideAnimations[index],
-                    child: FadeTransition(
-                      opacity: _fadeAnimations[index],
-                      child: _DiagnosisCard(
-                        code: _mockCodes[index]['code'],
-                        issue: _mockCodes[index]['issue'],
-                        explanation: _mockCodes[index]['explanation'],
-                        severity: _mockCodes[index]['severity'],
-                        recommendation: _mockCodes[index]['recommendation'],
+        return Scaffold(
+          appBar: AppBar(
+            backgroundColor: AppTheme.background,
+            elevation: 0,
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back_ios_new_outlined),
+              onPressed: () {
+                if (Navigator.canPop(context)) {
+                  Navigator.pop(context);
+                } else {
+                  widget.onBackToHome?.call();
+                }
+              },
+            ),
+            title: Text(
+              'Diagnóstico',
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
+          ),
+          body: SafeArea(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (codes.isNotEmpty)
+                    Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: AppTheme.surface,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Resumen del escaneo',
+                            style: Theme.of(context).textTheme.titleMedium,
+                          ),
+                          const SizedBox(height: 16),
+                          Row(
+                            children: [
+                              _SeveritySummary(
+                                count: urgent,
+                                label: 'Urgente',
+                                color: AppTheme.severityUrgent,
+                              ),
+                              const SizedBox(width: 12),
+                              _SeveritySummary(
+                                count: medium,
+                                label: 'Moderado',
+                                color: AppTheme.severityMedium,
+                              ),
+                              const SizedBox(width: 12),
+                              _SeveritySummary(
+                                count: low,
+                                label: 'Leve',
+                                color: AppTheme.severityLow,
+                              ),
+                            ],
+                          ),
+                        ],
                       ),
                     ),
-                  );
-                },
+                  if (codes.isNotEmpty) ...[
+                    const SizedBox(height: 24),
+                    Text(
+                      'Códigos detectados',
+                      style: Theme.of(context).textTheme.titleLarge,
+                    ),
+                    const SizedBox(height: 14),
+                    ListView.separated(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: codes.length,
+                      separatorBuilder: (_, _) => const SizedBox(height: 12),
+                      itemBuilder: (context, index) {
+                        final animIndex = index < _slideAnimations.length
+                            ? index
+                            : 0;
+                        if (_slideAnimations.length <= index) {
+                          return const SizedBox.shrink();
+                        }
+                        return SlideTransition(
+                          position: _slideAnimations[animIndex],
+                          child: FadeTransition(
+                            opacity: _fadeAnimations[animIndex],
+                            child: _DiagnosisCard(code: codes[index]),
+                          ),
+                        );
+                      },
+                    ),
+                  ],
+                  if (codes.isEmpty && !_scanning) ...[
+                    const SizedBox(height: 60),
+                    Center(
+                      child: Column(
+                        children: [
+                          Icon(
+                            Icons.check_circle_outline,
+                            color: AppTheme.severityLow,
+                            size: 64,
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            'Sin códigos de falla',
+                            style: Theme.of(context).textTheme.titleLarge,
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'No se detectaron códigos de error.',
+                            style: Theme.of(context).textTheme.bodyMedium,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                  if (_scanning)
+                    const Center(
+                      child: Padding(
+                        padding: EdgeInsets.all(32),
+                        child: Column(
+                          children: [
+                            CircularProgressIndicator(color: AppTheme.primary),
+                            SizedBox(height: 12),
+                            Text('Escaneando códigos...'),
+                          ],
+                        ),
+                      ),
+                    ),
+                  const SizedBox(height: 24),
+                  if (_obd.isConnected)
+                    CustomButton(
+                      label: _scanning ? 'Escaneando...' : 'Escanear códigos',
+                      icon: Icons.refresh_outlined,
+                      isOutlined: true,
+                      onPressed: _scanning ? null : _scanForCodes,
+                    ),
+                  const SizedBox(height: 32),
+                ],
               ),
-
-              const SizedBox(height: 32),
-            ],
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 }
@@ -211,9 +255,9 @@ class _SeveritySummary extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 12),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
+          color: color.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: color.withOpacity(0.3)),
+          border: Border.all(color: color.withValues(alpha: 0.3)),
         ),
         child: Column(
           children: [
@@ -239,19 +283,9 @@ class _SeveritySummary extends StatelessWidget {
 }
 
 class _DiagnosisCard extends StatefulWidget {
-  final String code;
-  final String issue;
-  final String explanation;
-  final String severity;
-  final String recommendation;
+  final DtcCode code;
 
-  const _DiagnosisCard({
-    required this.code,
-    required this.issue,
-    required this.explanation,
-    required this.severity,
-    required this.recommendation,
-  });
+  const _DiagnosisCard({required this.code});
 
   @override
   State<_DiagnosisCard> createState() => _DiagnosisCardState();
@@ -261,7 +295,7 @@ class _DiagnosisCardState extends State<_DiagnosisCard> {
   bool _expanded = false;
 
   Color get _severityColor {
-    switch (widget.severity) {
+    switch (widget.code.severity) {
       case 'urgent':
         return AppTheme.severityUrgent;
       case 'medium':
@@ -272,7 +306,7 @@ class _DiagnosisCardState extends State<_DiagnosisCard> {
   }
 
   String get _severityLabel {
-    switch (widget.severity) {
+    switch (widget.code.severity) {
       case 'urgent':
         return 'Urgente';
       case 'medium':
@@ -295,8 +329,8 @@ class _DiagnosisCardState extends State<_DiagnosisCard> {
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
             color: _expanded
-                ? _severityColor.withOpacity(0.5)
-                : _severityColor.withOpacity(0.2),
+                ? _severityColor.withValues(alpha: 0.5)
+                : _severityColor.withValues(alpha: 0.2),
             width: 1,
           ),
         ),
@@ -315,7 +349,7 @@ class _DiagnosisCardState extends State<_DiagnosisCard> {
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
-                    widget.code,
+                    widget.code.code,
                     style: Theme.of(context).textTheme.labelSmall?.copyWith(
                       color: AppTheme.textSecondary,
                       fontFamily: 'monospace',
@@ -329,7 +363,7 @@ class _DiagnosisCardState extends State<_DiagnosisCard> {
                     vertical: 4,
                   ),
                   decoration: BoxDecoration(
-                    color: _severityColor.withOpacity(0.15),
+                    color: _severityColor.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
@@ -351,14 +385,10 @@ class _DiagnosisCardState extends State<_DiagnosisCard> {
               ],
             ),
             const SizedBox(height: 12),
-            Text(widget.issue, style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 6),
             Text(
-              widget.explanation,
-              style: Theme.of(context).textTheme.bodyMedium,
+              widget.code.description,
+              style: Theme.of(context).textTheme.titleMedium,
             ),
-
-            // Expandible — recomendación
             AnimatedCrossFade(
               duration: const Duration(milliseconds: 300),
               crossFadeState: _expanded
@@ -382,7 +412,7 @@ class _DiagnosisCardState extends State<_DiagnosisCard> {
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          widget.recommendation,
+                          widget.code.recommendation,
                           style: Theme.of(context).textTheme.bodyMedium
                               ?.copyWith(color: _severityColor),
                         ),

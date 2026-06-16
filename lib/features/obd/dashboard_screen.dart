@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import '../../core/theme.dart';
 import '../../core/router.dart';
+import '../../core/services/obd_manager.dart';
 import '../../shared/widgets/warning_banner.dart';
 import '../../shared/widgets/custom_button.dart';
 
 class DashboardScreen extends StatefulWidget {
-  const DashboardScreen({super.key});
+  final ObdManager? obdManager;
+
+  const DashboardScreen({super.key, this.obdManager});
 
   @override
   State<DashboardScreen> createState() => _DashboardScreenState();
@@ -15,6 +18,8 @@ class _DashboardScreenState extends State<DashboardScreen>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _fadeAnimation;
+
+  ObdManager get _obd => widget.obdManager!;
 
   @override
   void initState() {
@@ -28,6 +33,7 @@ class _DashboardScreenState extends State<DashboardScreen>
       curve: Curves.easeOut,
     );
     _controller.forward();
+    _obd.scanDtc();
   }
 
   @override
@@ -38,196 +44,226 @@ class _DashboardScreenState extends State<DashboardScreen>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: AppTheme.background,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_outlined),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: Text('Dashboard', style: Theme.of(context).textTheme.titleLarge),
-        actions: [
-          Container(
-            margin: const EdgeInsets.only(right: 16),
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: AppTheme.primary.withOpacity(0.15),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Row(
-              children: [
-                Container(
-                  width: 8,
-                  height: 8,
-                  decoration: const BoxDecoration(
-                    color: AppTheme.primary,
-                    shape: BoxShape.circle,
-                  ),
-                ),
-                const SizedBox(width: 6),
-                Text(
-                  'Conectado',
-                  style: Theme.of(
-                    context,
-                  ).textTheme.labelSmall?.copyWith(color: AppTheme.primary),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-      body: FadeTransition(
-        opacity: _fadeAnimation,
-        child: SafeArea(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Warning banner
-                WarningBanner(
-                  message: 'Se detectaron 3 códigos de falla',
-                  severity: 'urgent',
-                  onTap: () =>
-                      Navigator.pushNamed(context, AppRouter.diagnosis),
-                ),
+    return ListenableBuilder(
+      listenable: _obd,
+      builder: (context, _) {
+        final data = _obd.vehicleData;
+        final dtc = _obd.dtcCodes;
+        final urgent = dtc.where((c) => c.severity == 'urgent').length;
+        final total = dtc.length;
 
-                const SizedBox(height: 24),
-
-                // Métrica principal destacada
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(24),
-                  decoration: BoxDecoration(
-                    color: AppTheme.surface,
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                      color: AppTheme.primary.withOpacity(0.2),
-                      width: 1,
+        return Scaffold(
+          appBar: AppBar(
+            backgroundColor: AppTheme.background,
+            elevation: 0,
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back_ios_new_outlined),
+              onPressed: () => Navigator.pop(context),
+            ),
+            title: Text(
+              'Dashboard',
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
+            actions: [
+              Container(
+                margin: const EdgeInsets.only(right: 16),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  color: AppTheme.primary.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 8,
+                      height: 8,
+                      decoration: const BoxDecoration(
+                        color: AppTheme.primary,
+                        shape: BoxShape.circle,
+                      ),
                     ),
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(14),
-                        decoration: BoxDecoration(
-                          color: AppTheme.primary.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                        child: const Icon(
-                          Icons.speed_outlined,
-                          color: AppTheme.primary,
-                          size: 32,
+                    const SizedBox(width: 6),
+                    Text(
+                      'Conectado',
+                      style: Theme.of(
+                        context,
+                      ).textTheme.labelSmall?.copyWith(color: AppTheme.primary),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          body: FadeTransition(
+            opacity: _fadeAnimation,
+            child: SafeArea(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (total > 0)
+                      WarningBanner(
+                        message:
+                            'Se detectaron $total códigos de falla${urgent > 0 ? " ($urgent urgente${urgent > 1 ? "s" : ""})" : ""}',
+                        severity: urgent > 0 ? 'urgent' : 'medium',
+                        onTap: () => Navigator.pushNamed(
+                          context,
+                          AppRouter.diagnosis,
+                          arguments: _obd,
                         ),
                       ),
-                      const SizedBox(width: 20),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                    if (total > 0) const SizedBox(height: 24),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(24),
+                      decoration: BoxDecoration(
+                        color: AppTheme.surface,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: AppTheme.primary.withValues(alpha: 0.2),
+                          width: 1,
+                        ),
+                      ),
+                      child: Row(
                         children: [
-                          Text(
-                            'RPM actual',
-                            style: Theme.of(context).textTheme.bodyMedium,
+                          Container(
+                            padding: const EdgeInsets.all(14),
+                            decoration: BoxDecoration(
+                              color: AppTheme.primary.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                            child: const Icon(
+                              Icons.speed_outlined,
+                              color: AppTheme.primary,
+                              size: 32,
+                            ),
                           ),
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.end,
+                          const SizedBox(width: 20),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                '1,200',
-                                style: Theme.of(context).textTheme.headlineLarge
-                                    ?.copyWith(
-                                      color: AppTheme.primary,
-                                      fontWeight: FontWeight.w700,
-                                    ),
+                                'RPM actual',
+                                style: Theme.of(context).textTheme.bodyMedium,
                               ),
-                              Padding(
-                                padding: const EdgeInsets.only(
-                                  bottom: 4,
-                                  left: 4,
-                                ),
-                                child: Text(
-                                  'rpm',
-                                  style: Theme.of(context).textTheme.bodyMedium,
-                                ),
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.end,
+                                children: [
+                                  Text(
+                                    '${data.rpm}',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .headlineLarge
+                                        ?.copyWith(
+                                          color: AppTheme.primary,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                  ),
+                                  Padding(
+                                    padding: const EdgeInsets.only(
+                                      bottom: 4,
+                                      left: 4,
+                                    ),
+                                    child: Text(
+                                      'rpm',
+                                      style: Theme.of(
+                                        context,
+                                      ).textTheme.bodyMedium,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                          const Spacer(),
+                          Column(
+                            children: [
+                              _MiniIndicator(
+                                label: data.rpm == 0 ? 'Detenido' : 'Normal',
+                                color: data.rpm == 0
+                                    ? AppTheme.textHint
+                                    : AppTheme.severityLow,
                               ),
                             ],
                           ),
                         ],
                       ),
-                      const Spacer(),
-                      Column(
-                        children: [
-                          _MiniIndicator(
-                            label: 'Normal',
-                            color: AppTheme.severityLow,
-                          ),
-                        ],
+                    ),
+                    const SizedBox(height: 14),
+                    GridView.count(
+                      crossAxisCount: 3,
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      crossAxisSpacing: 10,
+                      mainAxisSpacing: 10,
+                      childAspectRatio: 0.95,
+                      children: [
+                        _MetricCard(
+                          label: 'Temperatura',
+                          value: '${data.coolantTemp}',
+                          unit: '°C',
+                          icon: Icons.thermostat_outlined,
+                          color: data.coolantTemp > 100
+                              ? AppTheme.severityUrgent
+                              : data.coolantTemp > 90
+                              ? AppTheme.severityMedium
+                              : AppTheme.primary,
+                        ),
+                        _MetricCard(
+                          label: 'Velocidad',
+                          value: '${data.speed}',
+                          unit: 'km/h',
+                          icon: Icons.directions_car_outlined,
+                          color: AppTheme.primary,
+                        ),
+                        _MetricCard(
+                          label: 'Batería',
+                          value: data.batteryVoltage.toStringAsFixed(1),
+                          unit: 'V',
+                          icon: Icons.battery_full_outlined,
+                          color: data.batteryVoltage < 12
+                              ? AppTheme.severityUrgent
+                              : data.batteryVoltage < 12.5
+                              ? AppTheme.severityMedium
+                              : AppTheme.primary,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
+                    Text(
+                      'Acciones',
+                      style: Theme.of(context).textTheme.titleLarge,
+                    ),
+                    const SizedBox(height: 14),
+                    CustomButton(
+                      label: 'Ver códigos de falla',
+                      icon: Icons.search_outlined,
+                      onPressed: () => Navigator.pushNamed(
+                        context,
+                        AppRouter.diagnosis,
+                        arguments: _obd,
                       ),
-                    ],
-                  ),
-                ),
-
-                const SizedBox(height: 14),
-
-                // Grid métricas secundarias
-                GridView.count(
-                  crossAxisCount: 3,
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  crossAxisSpacing: 10,
-                  mainAxisSpacing: 10,
-                  childAspectRatio: 0.95,
-                  children: [
-                    _MetricCard(
-                      label: 'Temperatura',
-                      value: '87',
-                      unit: '°C',
-                      icon: Icons.thermostat_outlined,
-                      color: AppTheme.severityMedium,
                     ),
-                    _MetricCard(
-                      label: 'Velocidad',
-                      value: '0',
-                      unit: 'km/h',
-                      icon: Icons.directions_car_outlined,
-                      color: AppTheme.primary,
+                    const SizedBox(height: 10),
+                    CustomButton(
+                      label: 'Ver historial',
+                      icon: Icons.history_outlined,
+                      isOutlined: true,
+                      onPressed: () =>
+                          Navigator.pushNamed(context, AppRouter.history),
                     ),
-                    _MetricCard(
-                      label: 'Batería',
-                      value: '12.6',
-                      unit: 'V',
-                      icon: Icons.battery_full_outlined,
-                      color: AppTheme.primary,
-                    ),
+                    const SizedBox(height: 32),
                   ],
                 ),
-
-                const SizedBox(height: 24),
-
-                Text('Acciones', style: Theme.of(context).textTheme.titleLarge),
-                const SizedBox(height: 14),
-
-                CustomButton(
-                  label: 'Ver códigos de falla',
-                  icon: Icons.search_outlined,
-                  onPressed: () =>
-                      Navigator.pushNamed(context, AppRouter.diagnosis),
-                ),
-                const SizedBox(height: 10),
-                CustomButton(
-                  label: 'Ver historial',
-                  icon: Icons.history_outlined,
-                  isOutlined: true,
-                  onPressed: () =>
-                      Navigator.pushNamed(context, AppRouter.history),
-                ),
-
-                const SizedBox(height: 32),
-              ],
+              ),
             ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 }
@@ -243,9 +279,9 @@ class _MiniIndicator extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: color.withOpacity(0.3)),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
       ),
       child: Text(
         label,

@@ -23,7 +23,7 @@ lib/
 │   └── constants.dart     # Constantes de la app
 ├── features/
 │   ├── home/              # Pantalla principal
-│   ├── obd/               # Conexión Bluetooth y dashboard
+│   ├── obd/               # Conexión WiFi y dashboard
 │   ├── diagnosis/         # Lectura e interpretación de códigos OBD
 │   ├── camera/            # Escaneo visual del tablero (próximamente)
 │   ├── history/           # Historial de diagnósticos (próximamente)
@@ -56,7 +56,7 @@ lib/
 - `camera_scan_screen.dart` — esperando modelo de visión
 - `history_screen.dart` — lógica y UI completa
 - Integración de Riverpod para state management
-- Conexión Bluetooth real con OBD
+- Conexión WiFi real con OBD
 - `voice/` — integración de voz
 - `reports/` — exportar diagnósticos en PDF
 
