@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import '../../core/theme.dart';
 import '../../core/router.dart';
+import '../../core/services/obd_manager.dart';
 import '../../shared/widgets/status_card.dart';
 
 class HomeScreen extends StatelessWidget {
+  final ObdManager? obdManager;
   final void Function(int tabIndex)? onTabChanged;
 
-  const HomeScreen({super.key, this.onTabChanged});
+  const HomeScreen({super.key, this.obdManager, this.onTabChanged});
 
   @override
   Widget build(BuildContext context) {
@@ -18,8 +20,6 @@ class HomeScreen extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const SizedBox(height: 32),
-
-              // Header
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -56,26 +56,23 @@ class HomeScreen extends StatelessWidget {
                   ),
                 ],
               ),
-
               const SizedBox(height: 28),
-
-              // Status card
               StatusCard(
-                isConnected: false,
-                onConnectTap: () =>
-                    Navigator.pushNamed(context, AppRouter.connection),
+                obdManager: obdManager,
+                onConnectTap: () => Navigator.pushNamed(
+                  context,
+                  AppRouter.connection,
+                  arguments: obdManager,
+                ),
               ),
-
               const SizedBox(height: 28),
-
-              // Banner hero
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(24),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: [
-                      AppTheme.primary.withOpacity(0.8),
+                      AppTheme.primary.withValues(alpha: 0.8),
                       AppTheme.primaryDark,
                     ],
                     begin: Alignment.topLeft,
@@ -89,7 +86,7 @@ class HomeScreen extends StatelessWidget {
                     Container(
                       padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.15),
+                        color: Colors.white.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: const Icon(
@@ -108,13 +105,16 @@ class HomeScreen extends StatelessWidget {
                     Text(
                       'Conecta tu adaptador OBD y\ndescubre qué está pasando.',
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: Colors.white.withOpacity(0.8),
+                        color: Colors.white.withValues(alpha: 0.8),
                       ),
                     ),
                     const SizedBox(height: 20),
                     ElevatedButton(
-                      onPressed: () =>
-                          Navigator.pushNamed(context, AppRouter.connection),
+                      onPressed: () => Navigator.pushNamed(
+                        context,
+                        AppRouter.connection,
+                        arguments: obdManager,
+                      ),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.white,
                         foregroundColor: AppTheme.primaryDark,
@@ -132,16 +132,12 @@ class HomeScreen extends StatelessWidget {
                   ],
                 ),
               ),
-
               const SizedBox(height: 28),
-
-              // Acciones rápidas
               Text(
                 'Acciones rápidas',
                 style: Theme.of(context).textTheme.titleLarge,
               ),
               const SizedBox(height: 14),
-
               Row(
                 children: [
                   Expanded(
@@ -161,10 +157,7 @@ class HomeScreen extends StatelessWidget {
                   ),
                 ],
               ),
-
               const SizedBox(height: 32),
-
-              // Tip del día
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
@@ -177,7 +170,7 @@ class HomeScreen extends StatelessWidget {
                     Container(
                       padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
-                        color: AppTheme.primary.withOpacity(0.1),
+                        color: AppTheme.primary.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: const Icon(
@@ -208,7 +201,6 @@ class HomeScreen extends StatelessWidget {
                   ],
                 ),
               ),
-
               const SizedBox(height: 32),
             ],
           ),
