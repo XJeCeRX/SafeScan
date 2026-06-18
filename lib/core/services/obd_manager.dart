@@ -67,7 +67,7 @@ class ObdManager extends ChangeNotifier {
     if (_status != ObdStatus.connected) {
       _errorMessage =
           'No se pudo conectar en 25 segundos.\n'
-          'Verifica la IP y puerto del adaptador OBD.';
+          'Verifica que el adaptador esté encendido, el teléfono esté en su red WiFi y el switch del vehículo esté en ON.';
       _status = ObdStatus.error;
       _connectedIp = null;
       notifyListeners();
@@ -96,7 +96,7 @@ class ObdManager extends ChangeNotifier {
   String _friendlyError(String msg) {
     if (msg.contains('Connection refused') || msg.contains('No route')) {
       return 'No se pudo conectar al adaptador.\n'
-          'Verifica la IP y puerto, y que el adaptador esté encendido.';
+          'Verifica que estés conectado a la red WiFi del adaptador y que esté encendido.';
     }
     if (msg.contains('SocketException') || msg.contains('timed out')) {
       return 'Tiempo de espera agotado.\n'
