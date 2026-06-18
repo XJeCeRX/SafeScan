@@ -5,7 +5,6 @@ import 'package:wifi_scan/wifi_scan.dart';
 import '../../core/theme.dart';
 import '../../core/router.dart';
 import '../../core/services/obd_manager.dart';
-import '../../core/services/obd_ecu.dart';
 
 class ConnectionScreen extends StatefulWidget {
   final ObdManager? obdManager;
@@ -23,10 +22,6 @@ class _ConnectionScreenState extends State<ConnectionScreen>
       'Escaneo WiFi automatico disponible solo en Android. '
       'Conectate a la red OBD desde ajustes WiFi y luego busca el adaptador.';
 
-  final _ipController = TextEditingController(text: '192.168.0.10');
-  final _portController = TextEditingController(text: '35000');
-  bool _showManual = false;
-
   List<WiFiAccessPoint> _networks = [];
   bool _isScanning = false;
   bool _isConnectingWifi = false;
@@ -41,8 +36,6 @@ class _ConnectionScreenState extends State<ConnectionScreen>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    _ipController.dispose();
-    _portController.dispose();
     super.dispose();
   }
 
@@ -92,7 +85,6 @@ class _ConnectionScreenState extends State<ConnectionScreen>
       setState(() {
         _isScanning = false;
         _networks = [];
-        _showManual = true;
       });
       _showSnackBar(
         _wifiScanUnavailableMessage,
@@ -166,10 +158,7 @@ class _ConnectionScreenState extends State<ConnectionScreen>
       }
     } on MissingPluginException {
       if (mounted) {
-        setState(() {
-          _isScanning = false;
-          _showManual = true;
-        });
+        setState(() => _isScanning = false);
       }
       _showSnackBar(
         _wifiScanUnavailableMessage,
@@ -411,19 +400,8 @@ class _ConnectionScreenState extends State<ConnectionScreen>
     }
   }
 
-  Future<void> _connect({String? ip, int? port}) async {
-    final targetIp = ip ?? _ipController.text.trim();
-    final targetPort =
-        port ?? int.tryParse(_portController.text.trim()) ?? 35000;
-
-    if (targetIp.isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Ingresa una dirección IP')));
-      return;
-    }
-
-    final success = await _obd.connectToDevice(targetIp, targetPort);
+  Future<void> _connect({required String ip, required int port}) async {
+    final success = await _obd.connectToDevice(ip, port);
     if (!mounted) return;
     if (success) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -432,7 +410,7 @@ class _ConnectionScreenState extends State<ConnectionScreen>
             children: [
               const Icon(Icons.check_circle, color: Colors.white, size: 20),
               const SizedBox(width: 10),
-              Text('Conectado a $targetIp'),
+              const Text('Conectado al adaptador OBD'),
             ],
           ),
           backgroundColor: AppTheme.primary,
@@ -691,102 +669,12 @@ class _ConnectionScreenState extends State<ConnectionScreen>
                   const SizedBox(height: 8),
                   ...devices.map(
                     (d) => _ObdDeviceCard(
-                      device: d,
                       onTap: () => _connect(ip: d.ip, port: d.port),
                     ),
                   ),
                   const SizedBox(height: 16),
                 ],
 
-                const Divider(color: AppTheme.surfaceLight),
-                const SizedBox(height: 8),
-
-                GestureDetector(
-                  onTap: () => setState(() => _showManual = !_showManual),
-                  child: Row(
-                    children: [
-                      Icon(
-                        _showManual ? Icons.expand_less : Icons.expand_more,
-                        color: AppTheme.textSecondary,
-                        size: 20,
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        _showManual
-                            ? 'Ocultar configuración manual'
-                            : 'Configuración manual (IP y puerto)',
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: AppTheme.textSecondary,
-                          decoration: TextDecoration.underline,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                if (_showManual) ...[
-                  const SizedBox(height: 16),
-                  Container(
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: AppTheme.surface,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: AppTheme.surfaceLight,
-                        width: 1,
-                      ),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        TextField(
-                          controller: _ipController,
-                          decoration: InputDecoration(
-                            labelText: 'Dirección IP',
-                            hintText: '192.168.0.10',
-                            prefixIcon: const Icon(Icons.language_outlined),
-                            filled: true,
-                            fillColor: AppTheme.surfaceLight,
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide.none,
-                            ),
-                          ),
-                          style: Theme.of(context).textTheme.bodyLarge,
-                          keyboardType: TextInputType.text,
-                          textInputAction: TextInputAction.next,
-                        ),
-                        const SizedBox(height: 14),
-                        TextField(
-                          controller: _portController,
-                          decoration: InputDecoration(
-                            labelText: 'Puerto',
-                            hintText: '35000',
-                            prefixIcon: const Icon(
-                              Icons.settings_ethernet_outlined,
-                            ),
-                            filled: true,
-                            fillColor: AppTheme.surfaceLight,
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide.none,
-                            ),
-                          ),
-                          style: Theme.of(context).textTheme.bodyLarge,
-                          keyboardType: TextInputType.number,
-                        ),
-                        const SizedBox(height: 16),
-                        SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton.icon(
-                            onPressed: _connect,
-                            icon: const Icon(Icons.wifi_find_outlined),
-                            label: const Text('Conectar manualmente'),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
                 const SizedBox(height: 16),
                 Container(
                   padding: const EdgeInsets.all(14),
@@ -809,8 +697,8 @@ class _ConnectionScreenState extends State<ConnectionScreen>
                       Expanded(
                         child: Text(
                           'El adaptador OBD crea su propia red WiFi. '
-                          'Presiona "Buscar redes WiFi", selecciona la red, '
-                          'conéctate desde Configuración, y vuelve para buscar el adaptador.',
+                          'Conéctate a esa red y la app buscará el adaptador '
+                          'automáticamente.',
                           style: Theme.of(
                             context,
                           ).textTheme.bodyMedium?.copyWith(fontSize: 12),
@@ -905,10 +793,9 @@ class _WifiNetworkCard extends StatelessWidget {
 }
 
 class _ObdDeviceCard extends StatelessWidget {
-  final DiscoveredDevice device;
   final VoidCallback onTap;
 
-  const _ObdDeviceCard({required this.device, required this.onTap});
+  const _ObdDeviceCard({required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -928,19 +815,19 @@ class _ObdDeviceCard extends StatelessWidget {
             borderRadius: BorderRadius.circular(8),
           ),
           child: const Icon(
-            Icons.bluetooth_connected_outlined,
+            Icons.directions_car_outlined,
             color: AppTheme.primary,
             size: 20,
           ),
         ),
         title: Text(
-          device.ip,
+          'Adaptador OBD-II',
           style: Theme.of(
             context,
           ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
         ),
         subtitle: Text(
-          'Puerto ${device.port}',
+          'Tocar para conectar',
           style: Theme.of(context).textTheme.bodyMedium,
         ),
         trailing: const Icon(
