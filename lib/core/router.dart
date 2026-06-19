@@ -4,7 +4,9 @@ import '../features/obd/connection_screen.dart';
 import '../features/obd/dashboard_screen.dart';
 import '../features/diagnosis/diagnosis_screen.dart';
 import '../features/history/history_screen.dart';
+import '../features/chat/chat_screen.dart';
 import 'services/obd_manager.dart';
+import 'services/chat_manager.dart';
 
 class AppRouter {
   static const String home = '/';
@@ -12,11 +14,14 @@ class AppRouter {
   static const String dashboard = '/dashboard';
   static const String diagnosis = '/diagnosis';
   static const String history = '/history';
+  static const String chat = '/chat';
   static ObdManager? sharedObdManager;
+  static ChatManager? sharedChatManager;
 
   static Route<dynamic> generateRoute(RouteSettings settings) {
     final args = settings.arguments;
     final obd = args is ObdManager ? args : sharedObdManager;
+    final chatManager = sharedChatManager;
     switch (settings.name) {
       case home:
         return _route(HomeScreen(obdManager: obd));
@@ -28,6 +33,13 @@ class AppRouter {
         return _route(DiagnosisScreen(obdManager: obd));
       case history:
         return _route(const HistoryScreen());
+      case chat:
+        if (obd != null && chatManager != null) {
+          return _route(
+            ChatScreen(chatManager: chatManager, obdManager: obd),
+          );
+        }
+        return _route(HomeScreen(obdManager: obd));
       default:
         return _route(HomeScreen(obdManager: obd));
     }

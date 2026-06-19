@@ -150,11 +150,25 @@ class HomeScreen extends StatelessWidget {
                   const SizedBox(width: 12),
                   Expanded(
                     child: _QuickAction(
-                      icon: Icons.history_outlined,
-                      label: 'Historial',
+                      icon: Icons.chat_bubble_outline,
+                      label: 'Asistente',
                       onTap: () => onTabChanged?.call(2),
                     ),
                   ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: _QuickAction(
+                      icon: Icons.history_outlined,
+                      label: 'Historial',
+                      onTap: () => onTabChanged?.call(3),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  const Expanded(child: SizedBox()),
                 ],
               ),
               const SizedBox(height: 32),
