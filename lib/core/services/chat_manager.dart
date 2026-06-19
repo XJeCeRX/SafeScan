@@ -11,10 +11,9 @@ import 'obd_manager.dart';
 /// Orquestador del módulo de chat: mensajes, sensores y conexión en tiempo real.
 class ChatManager extends ChangeNotifier {
   ChatManager({
-    required ObdManager obdManager,
+    required this._obdManager,
     ChatService? chatService,
-  }) : _obdManager = obdManager,
-       _chatService = chatService ?? ChatService() {
+  }) : _chatService = chatService ?? ChatService() {
     _eventSubscription = _chatService.events.listen(_handleServerEvent);
   }
 

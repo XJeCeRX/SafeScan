@@ -140,16 +140,27 @@ class ObdManager extends ChangeNotifier {
     _isScanning = true;
     _discoveredDevices = [];
     _errorMessage = null;
+    _connectionStep = 'Conectando a 192.168.0.10...';
     notifyListeners();
 
     try {
+      _connectionStep = 'Buscando adaptador en la red local...';
+      notifyListeners();
       _discoveredDevices = await ObdEcu.scanNetwork();
     } catch (e) {
       _errorMessage = 'Error al buscar dispositivos: $e';
     }
 
+    _connectionStep = '';
     _isScanning = false;
     notifyListeners();
+  }
+
+  Future<bool> connectToKnownAdapter({
+    String ip = '192.168.0.10',
+    int port = 35000,
+  }) {
+    return connectToDevice(ip, port);
   }
 
   Future<void> scanDtc() async {

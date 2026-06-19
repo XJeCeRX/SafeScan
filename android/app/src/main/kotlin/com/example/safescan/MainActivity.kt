@@ -49,6 +49,7 @@ class MainActivity : FlutterActivity() {
                     startActivity(Intent(Settings.ACTION_WIFI_SETTINGS))
                     result.success(true)
                 }
+                "bindActiveWifi" -> bindActiveWifi(result)
                 else -> result.notImplemented()
             }
         }
@@ -227,6 +228,47 @@ class MainActivity : FlutterActivity() {
         val enabled = wifiManager.enableNetwork(networkId, true)
         val reconnected = wifiManager.reconnect()
         result.success(mapOf("connected" to (enabled && reconnected), "ssid" to ssid))
+    }
+
+    private fun bindActiveWifi(result: MethodChannel.Result) {
+        try {
+            val connectivityManager = connectivityManager()
+            val activeNetwork = connectivityManager.activeNetwork
+            if (activeNetwork == null) {
+                result.success(
+                    mapOf(
+                        "bound" to false,
+                        "message" to "No hay red activa en el teléfono"
+                    )
+                )
+                return
+            }
+
+            val capabilities = connectivityManager.getNetworkCapabilities(activeNetwork)
+            if (capabilities?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) != true) {
+                result.success(
+                    mapOf(
+                        "bound" to false,
+                        "message" to "La red activa no es WiFi"
+                    )
+                )
+                return
+            }
+
+            val bound = connectivityManager.bindProcessToNetwork(activeNetwork)
+            result.success(
+                mapOf(
+                    "bound" to bound,
+                    "ssid" to getCurrentSsid()
+                )
+            )
+        } catch (error: SecurityException) {
+            result.error(
+                "wifi_permission_denied",
+                "Faltan permisos para usar la red WiFi activa",
+                error.message
+            )
+        }
     }
 
     private fun releaseWifiNetwork() {
