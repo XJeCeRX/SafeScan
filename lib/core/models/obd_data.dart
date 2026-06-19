@@ -153,6 +153,22 @@ class DtcCode {
     );
   }
 
+  Map<String, dynamic> toJson() => {
+    'code': code,
+    'description': description,
+    'severity': severity,
+    'recommendation': recommendation,
+  };
+
+  factory DtcCode.fromJson(Map<String, dynamic> json) {
+    return DtcCode(
+      code: json['code'] as String,
+      description: json['description'] as String,
+      severity: json['severity'] as String,
+      recommendation: json['recommendation'] as String,
+    );
+  }
+
   static String _getPrefix(int byte1) {
     switch ((byte1 >> 6) & 0x03) {
       case 0:
@@ -214,4 +230,32 @@ class VehicleData {
     fuelLevel: 0,
     timestamp: Duration.zero,
   );
+
+  Map<String, dynamic> toJson() => {
+    'rpm': rpm,
+    'coolant_temp': coolantTemp,
+    'speed': speed,
+    'battery_voltage': batteryVoltage,
+    'engine_load': engineLoad,
+    'intake_temp': intakeTemp,
+    'throttle_position': throttlePosition,
+    'fuel_level': fuelLevel,
+    'timestamp_ms': timestamp.inMilliseconds,
+  };
+
+  factory VehicleData.fromJson(Map<String, dynamic> json) {
+    return VehicleData(
+      rpm: json['rpm'] as int? ?? 0,
+      coolantTemp: json['coolant_temp'] as int? ?? 0,
+      speed: json['speed'] as int? ?? 0,
+      batteryVoltage: (json['battery_voltage'] as num?)?.toDouble() ?? 0,
+      engineLoad: json['engine_load'] as int? ?? 0,
+      intakeTemp: json['intake_temp'] as int? ?? 0,
+      throttlePosition: json['throttle_position'] as int? ?? 0,
+      fuelLevel: (json['fuel_level'] as num?)?.toDouble() ?? 0,
+      timestamp: Duration(
+        milliseconds: json['timestamp_ms'] as int? ?? 0,
+      ),
+    );
+  }
 }

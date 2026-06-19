@@ -1,14 +1,21 @@
 import 'package:flutter/material.dart';
 import '../../core/theme.dart';
 import '../../core/services/obd_manager.dart';
+import '../../core/services/chat_manager.dart';
 import '../../features/home/home_screen.dart';
 import '../../features/diagnosis/diagnosis_screen.dart';
 import '../../features/history/history_screen.dart';
+import '../../features/chat/chat_screen.dart';
 
 class MainScaffold extends StatefulWidget {
   final ObdManager obdManager;
+  final ChatManager chatManager;
 
-  const MainScaffold({super.key, required this.obdManager});
+  const MainScaffold({
+    super.key,
+    required this.obdManager,
+    required this.chatManager,
+  });
 
   @override
   State<MainScaffold> createState() => _MainScaffoldState();
@@ -41,6 +48,10 @@ class _MainScaffoldState extends State<MainScaffold> {
       obdManager: widget.obdManager,
       onBackToHome: () => _onTabTapped(0),
     ),
+    ChatScreen(
+      chatManager: widget.chatManager,
+      obdManager: widget.obdManager,
+    ),
     HistoryScreen(onBackToHome: () => _onTabTapped(0)),
   ];
 
@@ -54,6 +65,11 @@ class _MainScaffoldState extends State<MainScaffold> {
       icon: Icons.search_outlined,
       activeIcon: Icons.search_rounded,
       label: 'Diagnóstico',
+    ),
+    _NavItem(
+      icon: Icons.chat_bubble_outline,
+      activeIcon: Icons.chat_bubble_rounded,
+      label: 'Asistente',
     ),
     _NavItem(
       icon: Icons.history_outlined,
