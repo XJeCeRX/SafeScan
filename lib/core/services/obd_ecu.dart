@@ -22,10 +22,20 @@ class DiscoveredDevice {
 }
 
 class ObdEcu {
-  static const List<int> _scanPorts = [35000, 23];
-  static const int _scanConcurrency = 32;
-  static const Duration _probeTimeout = Duration(milliseconds: 450);
-  static const Duration _probeReadDelay = Duration(milliseconds: 350);
+  static const List<int> _scanPorts = [35000, 23, 8080];
+  static const int _scanConcurrency = 24;
+  static const Duration _probeConnectTimeout = Duration(milliseconds: 2500);
+  static const Duration _probeReadDelay = Duration(milliseconds: 900);
+
+  /// IPs frecuentes en adaptadores ELM327 WiFi (Steren SCAN-030 usa 192.168.0.10).
+  static const List<String> _priorityIps = [
+    '192.168.0.10',
+    '192.168.0.1',
+    '192.168.0.11',
+    '192.168.4.1',
+    '192.168.1.10',
+    '192.168.10.1',
+  ];
 
   static const List<String> _commonIps = [
     '192.168.0.10',
@@ -44,10 +54,36 @@ class ObdEcu {
     '192.168.0.150',
   ];
 
+  static const List<String> _fallbackSubnets = [
+    '192.168.0',
+    '192.168.4',
+    '192.168.1',
+    '192.168.10',
+  ];
+
+  /// Intenta primero la IP típica del Steren/ELM327 antes del escaneo completo.
+  static Future<DiscoveredDevice?> tryPriorityEndpoints() async {
+    for (final ip in _priorityIps) {
+      for (final port in _scanPorts) {
+        if (await _probe(ip, port, null, acceptTcpOnly: port == 35000)) {
+          return DiscoveredDevice(ip, port);
+        }
+      }
+    }
+    return null;
+  }
+
   static Future<List<DiscoveredDevice>> scanNetwork() async {
     final results = <DiscoveredDevice>{};
+
+    final priority = await tryPriorityEndpoints();
+    if (priority != null) {
+      return [priority];
+    }
+
     final localPrefixes = await _localIpv4Prefixes();
     final firstPassIps = <String>{
+      ..._priorityIps,
       ..._commonIps,
       for (final prefix in localPrefixes) ...[
         '$prefix.1',
@@ -61,10 +97,12 @@ class ObdEcu {
     await _scanIps(firstPassIps, results);
 
     if (results.isEmpty) {
-      for (final prefix in localPrefixes) {
+      final subnets = localPrefixes.isEmpty ? _fallbackSubnets : localPrefixes;
+      for (final prefix in subnets) {
         await _scanIps([
           for (var host = 1; host <= 254; host++) '$prefix.$host',
         ], results);
+        if (results.isNotEmpty) break;
       }
     }
 
@@ -86,7 +124,9 @@ class ObdEcu {
             ? start + _scanConcurrency
             : ips.length;
         final batch = ips.sublist(start, end);
-        await Future.wait(batch.map((ip) => _probe(ip, port, results)));
+        await Future.wait(
+          batch.map((ip) => _probe(ip, port, results, acceptTcpOnly: port == 35000)),
+        );
       }
     }
   }
@@ -109,13 +149,25 @@ class ObdEcu {
     return prefixes;
   }
 
-  static Future<void> _probe(
+  static Future<bool> _probe(
     String ip,
     int port,
-    Set<DiscoveredDevice> results,
-  ) async {
+    Set<DiscoveredDevice>? results, {
+    bool acceptTcpOnly = false,
+  }) async {
     try {
-      final socket = await Socket.connect(ip, port, timeout: _probeTimeout);
+      final socket = await Socket.connect(
+        ip,
+        port,
+        timeout: _probeConnectTimeout,
+      );
+
+      if (acceptTcpOnly) {
+        socket.destroy();
+        results?.add(DiscoveredDevice(ip, port));
+        return true;
+      }
+
       var response = '';
       final subscription = socket.listen((data) {
         response += ascii.decode(data, allowInvalid: true);
@@ -127,12 +179,23 @@ class ObdEcu {
       socket.destroy();
 
       final normalized = response.toUpperCase();
-      if (normalized.contains('OK') ||
+      final looksLikeElm = normalized.contains('OK') ||
           normalized.contains('ELM') ||
-          normalized.contains('>')) {
-        results.add(DiscoveredDevice(ip, port));
+          normalized.contains('>') ||
+          normalized.contains('BUS INIT');
+
+      if (looksLikeElm) {
+        results?.add(DiscoveredDevice(ip, port));
+        return true;
+      }
+
+      // Puerto abierto sin respuesta AT clara: aún puede ser el adaptador.
+      if (port == 23 && response.isNotEmpty) {
+        results?.add(DiscoveredDevice(ip, port));
+        return true;
       }
     } catch (_) {}
+    return false;
   }
 
   Socket? _connection;
@@ -160,7 +223,7 @@ class ObdEcu {
     _connection = await Socket.connect(
       host,
       port,
-      timeout: const Duration(seconds: 10),
+      timeout: const Duration(seconds: 15),
     );
     _connection!.listen(
       (data) {

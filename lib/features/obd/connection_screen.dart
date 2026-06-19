@@ -35,6 +35,7 @@ class _ConnectionScreenState extends State<ConnectionScreen>
 
   @override
   void dispose() {
+    _obd.removeListener(_onObdChanged);
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
@@ -43,13 +44,45 @@ class _ConnectionScreenState extends State<ConnectionScreen>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _obd.addListener(_onObdChanged);
     _checkCurrentSsid();
+  }
+
+  void _onObdChanged() {
+    if (mounted) setState(() {});
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      _checkCurrentSsid();
+      _checkCurrentSsid().then((_) async {
+        if (!mounted) return;
+        if (_currentSsid != null && _currentSsid!.isNotEmpty && !_obd.isConnected) {
+          await _bindActiveWifiForObd();
+        }
+      });
+    }
+  }
+
+  Future<bool> _bindActiveWifiForObd() async {
+    if (!_supportsNativeWifiScan) return false;
+
+    try {
+      final result = await _wifiChannel.invokeMapMethod<String, dynamic>(
+        'bindActiveWifi',
+      );
+      return result?['bound'] == true;
+    } on PlatformException catch (e) {
+      if (e.code == 'wifi_permission_denied' && mounted) {
+        _showSnackBar(
+          'No se pudo enlazar la red WiFi del adaptador. '
+          'Reinstala la app o conecta desde la lista de redes.',
+          backgroundColor: AppTheme.severityMedium,
+        );
+      }
+      return false;
+    } catch (_) {
+      return false;
     }
   }
 
@@ -190,11 +223,19 @@ class _ConnectionScreenState extends State<ConnectionScreen>
     _showSnackBar(message, backgroundColor: AppTheme.severityUrgent);
   }
 
-  void _showSnackBar(String message, {required Color backgroundColor}) {
+  void _showSnackBar(
+    String message, {
+    required Color backgroundColor,
+    Duration duration = const Duration(seconds: 4),
+  }) {
     if (!mounted) return;
 
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), backgroundColor: backgroundColor),
+      SnackBar(
+        content: Text(message),
+        backgroundColor: backgroundColor,
+        duration: duration,
+      ),
     );
   }
 
@@ -280,6 +321,15 @@ class _ConnectionScreenState extends State<ConnectionScreen>
           backgroundColor: AppTheme.severityMedium,
         ),
       );
+    } on PlatformException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(_wifiConnectErrorMessage(e)),
+          backgroundColor: AppTheme.severityUrgent,
+          duration: const Duration(seconds: 6),
+        ),
+      );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -296,6 +346,15 @@ class _ConnectionScreenState extends State<ConnectionScreen>
         });
       }
     }
+  }
+
+  String _wifiConnectErrorMessage(PlatformException e) {
+    if (e.code == 'wifi_permission_denied') {
+      return 'Android bloqueó la conexión automática.\n'
+          'Conéctate a la red del escáner desde Ajustes WiFi, '
+          'vuelve a SafeScan y pulsa "Buscar adaptador OBD".';
+    }
+    return 'Error al conectar WiFi: ${e.message ?? e.code}';
   }
 
   static const _openSettingsToken = '__open_settings__';
@@ -380,24 +439,37 @@ class _ConnectionScreenState extends State<ConnectionScreen>
   }
 
   Future<void> _autoDetectObd() async {
+    final bound = await _bindActiveWifiForObd();
+    if (!bound && _currentSsid != null && _currentSsid!.isNotEmpty && mounted) {
+      _showSnackBar(
+        'Desactiva datos móviles un momento para que el teléfono use solo '
+        'el WiFi del escáner.',
+        backgroundColor: AppTheme.severityMedium,
+      );
+    }
+
     await _obd.scanNetwork();
 
     if (!mounted) return;
 
     if (_obd.discoveredDevices.isNotEmpty) {
       final device = _obd.discoveredDevices.first;
-      _connect(ip: device.ip, port: device.port);
+      await _connect(ip: device.ip, port: device.port);
     } else {
       setState(() {});
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'No se encontró el adaptador. Verifica la conexión WiFi.',
-          ),
-          backgroundColor: AppTheme.severityUrgent,
-        ),
+      _showSnackBar(
+        'No se encontró el adaptador automáticamente.\n'
+        'En tu WiFi el escáner suele estar en 192.168.0.10 — '
+        'prueba "Conectar directo (192.168.0.10)".',
+        backgroundColor: AppTheme.severityUrgent,
+        duration: const Duration(seconds: 7),
       );
     }
+  }
+
+  Future<void> _connectDirectToAdapter() async {
+    await _bindActiveWifiForObd();
+    await _connect(ip: '192.168.0.10', port: 35000);
   }
 
   Future<void> _connect({required String ip, required int port}) async {
@@ -473,7 +545,7 @@ class _ConnectionScreenState extends State<ConnectionScreen>
               if (_currentSsid != null && _currentSsid!.isNotEmpty)
                 Container(
                   width: double.infinity,
-                  padding: const EdgeInsets.all(12),
+                  padding: const EdgeInsets.all(14),
                   margin: const EdgeInsets.only(bottom: 16),
                   decoration: BoxDecoration(
                     color: AppTheme.primary.withValues(alpha: 0.1),
@@ -482,19 +554,37 @@ class _ConnectionScreenState extends State<ConnectionScreen>
                       color: AppTheme.primary.withValues(alpha: 0.3),
                     ),
                   ),
-                  child: Row(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Icon(Icons.wifi, color: AppTheme.primary, size: 20),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          'Conectado a: $_currentSsid',
-                          style: const TextStyle(
-                            color: AppTheme.primary,
-                            fontSize: 13,
+                      Row(
+                        children: [
+                          const Icon(Icons.wifi, color: AppTheme.primary, size: 20),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              'WiFi conectado: $_currentSsid',
+                              style: const TextStyle(
+                                color: AppTheme.primary,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      if (!_obd.isConnected) ...[
+                        const SizedBox(height: 10),
+                        Text(
+                          'El escáner está en 192.168.0.10 (puerta de enlace). '
+                          'Pulsa "Conectar directo" o "Buscar adaptador OBD". '
+                          'Auto en ON (contacto).',
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            fontSize: 12,
+                            color: AppTheme.textPrimary,
                           ),
                         ),
-                      ),
+                      ],
                     ],
                   ),
                 ),
@@ -570,7 +660,9 @@ class _ConnectionScreenState extends State<ConnectionScreen>
                           _isConnectingWifi
                               ? 'Conectando a $_connectingSsid...'
                               : isDetecting
-                              ? 'Buscando adaptador OBD...'
+                              ? (_obd.connectionStep.isNotEmpty
+                                    ? _obd.connectionStep
+                                    : 'Buscando adaptador OBD...')
                               : step.isNotEmpty
                               ? step
                               : 'Conectando...',
@@ -654,9 +746,25 @@ class _ConnectionScreenState extends State<ConnectionScreen>
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton.icon(
-                    onPressed: _autoDetectObd,
+                    onPressed: (isConnecting || isDetecting)
+                        ? null
+                        : _connectDirectToAdapter,
+                    icon: const Icon(Icons.link),
+                    label: const Text('Conectar directo (192.168.0.10)'),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: (isConnecting || isDetecting) ? null : _autoDetectObd,
                     icon: const Icon(Icons.search_outlined),
                     label: const Text('Buscar adaptador OBD'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppTheme.textPrimary,
+                      minimumSize: const Size(double.infinity, 48),
+                      side: const BorderSide(color: AppTheme.surfaceLight),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -669,6 +777,8 @@ class _ConnectionScreenState extends State<ConnectionScreen>
                   const SizedBox(height: 8),
                   ...devices.map(
                     (d) => _ObdDeviceCard(
+                      ip: d.ip,
+                      port: d.port,
                       onTap: () => _connect(ip: d.ip, port: d.port),
                     ),
                   ),
@@ -793,9 +903,15 @@ class _WifiNetworkCard extends StatelessWidget {
 }
 
 class _ObdDeviceCard extends StatelessWidget {
+  final String ip;
+  final int port;
   final VoidCallback onTap;
 
-  const _ObdDeviceCard({required this.onTap});
+  const _ObdDeviceCard({
+    required this.ip,
+    required this.port,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -827,7 +943,7 @@ class _ObdDeviceCard extends StatelessWidget {
           ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
         ),
         subtitle: Text(
-          'Tocar para conectar',
+          '$ip:$port — Tocar para conectar',
           style: Theme.of(context).textTheme.bodyMedium,
         ),
         trailing: const Icon(
