@@ -3,6 +3,7 @@ import '../../core/theme.dart';
 import '../../core/router.dart';
 import '../../core/services/obd_manager.dart';
 import '../../shared/widgets/warning_banner.dart';
+import '../../shared/widgets/success_banner.dart';
 import '../../shared/widgets/custom_button.dart';
 
 class DashboardScreen extends StatefulWidget {
@@ -115,8 +116,21 @@ class _DashboardScreenState extends State<DashboardScreen>
                           AppRouter.diagnosis,
                           arguments: _obd,
                         ),
+                      )
+                    else if (_obd.hasScannedDtc)
+                      SuccessBanner(
+                        title: 'Sin alertas detectadas',
+                        message:
+                            'No se encontraron códigos de error activos en el '
+                            'vehículo.',
+                        onTap: () => Navigator.pushNamed(
+                          context,
+                          AppRouter.diagnosis,
+                          arguments: _obd,
+                        ),
                       ),
-                    if (total > 0) const SizedBox(height: 24),
+                    if (total > 0 || _obd.hasScannedDtc)
+                      const SizedBox(height: 24),
                     Container(
                       width: double.infinity,
                       padding: const EdgeInsets.all(24),

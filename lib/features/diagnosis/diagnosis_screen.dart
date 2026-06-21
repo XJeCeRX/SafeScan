@@ -4,6 +4,7 @@ import '../../core/services/obd_manager.dart';
 import '../../core/services/diagnosis_http_service.dart';
 import '../../core/models/obd_data.dart';
 import '../../shared/widgets/custom_button.dart';
+import '../../shared/widgets/success_banner.dart';
 
 class DiagnosisScreen extends StatefulWidget {
   final ObdManager? obdManager;
@@ -76,6 +77,18 @@ class _DiagnosisScreenState extends State<DiagnosisScreen>
     setState(() => _scanning = false);
     _controller.reset();
     _setupAnimations();
+
+    if (_obd.dtcCodes.isEmpty && _obd.hasScannedDtc) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text(
+            'Escaneo completado: no se detectaron alertas ni códigos de error.',
+          ),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: AppTheme.severityLow,
+        ),
+      );
+    }
   }
 
   Future<void> _diagnose() async {
@@ -216,24 +229,67 @@ class _DiagnosisScreenState extends State<DiagnosisScreen>
                       },
                     ),
                   ],
-                  if (codes.isEmpty && !_scanning) ...[
+                  if (codes.isEmpty && !_scanning && _obd.hasScannedDtc) ...[
+                    SuccessBanner(
+                      title: 'Sin alertas detectadas',
+                      message:
+                          'El escaneo confirmó que no hay códigos de error '
+                          'activos en el vehículo. Todo parece estar en orden.',
+                    ),
+                    const SizedBox(height: 24),
+                  ],
+                  if (codes.isEmpty &&
+                      !_scanning &&
+                      !_obd.hasScannedDtc &&
+                      _obd.isConnected) ...[
+                    const SizedBox(height: 40),
+                    Center(
+                      child: Column(
+                        children: [
+                          Icon(
+                            Icons.radar_outlined,
+                            color: AppTheme.primary,
+                            size: 64,
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            'Listo para escanear',
+                            style: Theme.of(context).textTheme.titleLarge,
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Pulsa "Escanear códigos" para verificar si hay '
+                            'alertas en el vehículo.',
+                            textAlign: TextAlign.center,
+                            style: Theme.of(context).textTheme.bodyMedium,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                  if (codes.isEmpty &&
+                      !_scanning &&
+                      !_obd.hasScannedDtc &&
+                      !_obd.isConnected) ...[
                     const SizedBox(height: 60),
                     Center(
                       child: Column(
                         children: [
                           Icon(
-                            Icons.check_circle_outline,
-                            color: AppTheme.severityLow,
+                            Icons.link_off_outlined,
+                            color: AppTheme.textHint,
                             size: 64,
                           ),
                           const SizedBox(height: 16),
                           Text(
-                            'Sin códigos de falla',
+                            'Conecta el adaptador OBD',
                             style: Theme.of(context).textTheme.titleLarge,
                           ),
                           const SizedBox(height: 8),
                           Text(
-                            'No se detectaron códigos de error.',
+                            'Conecta el sensor para poder escanear y confirmar '
+                            'si hay alertas.',
+                            textAlign: TextAlign.center,
                             style: Theme.of(context).textTheme.bodyMedium,
                           ),
                         ],

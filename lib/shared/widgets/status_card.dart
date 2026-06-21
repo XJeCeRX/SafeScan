@@ -11,6 +11,27 @@ class StatusCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isConnected = obdManager?.isConnected ?? false;
+    final hasScanned = obdManager?.hasScannedDtc ?? false;
+    final dtcCount = obdManager?.dtcCodes.length ?? 0;
+
+    String subtitle;
+    if (!isConnected) {
+      subtitle = 'Conecta tu adaptador WiFi';
+    } else if (!hasScanned) {
+      subtitle = 'Conectado — escanea para verificar alertas';
+    } else if (dtcCount == 0) {
+      subtitle = 'Sin alertas detectadas';
+    } else {
+      subtitle =
+          '$dtcCount alerta${dtcCount == 1 ? '' : 's'} detectada${dtcCount == 1 ? '' : 's'}';
+    }
+
+    final statusColor = isConnected
+        ? (hasScanned && dtcCount == 0
+              ? AppTheme.severityLow
+              : AppTheme.primary)
+        : AppTheme.textHint;
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
@@ -18,7 +39,7 @@ class StatusCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: isConnected
-              ? AppTheme.primary.withValues(alpha: 0.3)
+              ? statusColor.withValues(alpha: 0.3)
               : AppTheme.textHint.withValues(alpha: 0.2),
           width: 1,
         ),
@@ -29,12 +50,12 @@ class StatusCard extends StatelessWidget {
             width: 10,
             height: 10,
             decoration: BoxDecoration(
-              color: isConnected ? AppTheme.primary : AppTheme.textHint,
+              color: statusColor,
               shape: BoxShape.circle,
               boxShadow: isConnected
                   ? [
                       BoxShadow(
-                        color: AppTheme.primary.withValues(alpha: 0.4),
+                        color: statusColor.withValues(alpha: 0.4),
                         blurRadius: 6,
                         spreadRadius: 1,
                       ),
@@ -56,9 +77,7 @@ class StatusCard extends StatelessWidget {
                   ),
                 ),
                 Text(
-                  isConnected
-                      ? 'Leyendo datos del vehículo'
-                      : 'Conecta tu adaptador WiFi',
+                  subtitle,
                   style: Theme.of(
                     context,
                   ).textTheme.bodyMedium?.copyWith(fontSize: 12),
@@ -79,7 +98,13 @@ class StatusCard extends StatelessWidget {
               child: const Text('Conectar'),
             ),
           if (isConnected)
-            Icon(Icons.check_circle_outline, color: AppTheme.primary, size: 20),
+            Icon(
+              hasScanned && dtcCount == 0
+                  ? Icons.verified_outlined
+                  : Icons.check_circle_outline,
+              color: statusColor,
+              size: 20,
+            ),
         ],
       ),
     );
