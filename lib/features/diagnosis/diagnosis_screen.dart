@@ -469,6 +469,14 @@ class _DiagnosisCardState extends State<_DiagnosisCard> {
                   const SizedBox(height: 14),
                   Divider(color: AppTheme.surfaceLight, thickness: 1),
                   const SizedBox(height: 10),
+                  if (widget.code.explanation != null &&
+                      widget.code.explanation!.isNotEmpty) ...[
+                    Text(
+                      widget.code.explanation!,
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                    const SizedBox(height: 14),
+                  ],
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [

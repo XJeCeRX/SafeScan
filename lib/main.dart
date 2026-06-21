@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'core/models/obd_data.dart';
+import 'core/services/dtc_lookup_service.dart';
 import 'core/router.dart';
 import 'core/theme.dart';
 import 'core/services/obd_manager.dart';
@@ -11,6 +13,9 @@ import 'shared/widgets/bottom_nav.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Hive.initFlutter();
+
+  final dtcLookup = await DtcLookupService.load();
+  DtcCode.registerResolver(dtcLookup.resolve);
 
   final obdManager = ObdManager();
   obdManager.init();
