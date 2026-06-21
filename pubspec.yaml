@@ -37,6 +37,10 @@ dependencies:
   wifi_scan: ^0.4.1+2
   web_socket_channel: ^3.0.3
   uuid: ^4.5.1
+  hive: ^2.2.3
+  hive_flutter: ^1.1.0
+  connectivity_plus: ^6.1.0
+  http: ^1.2.0
 dev_dependencies:
   flutter_test:
     sdk: flutter

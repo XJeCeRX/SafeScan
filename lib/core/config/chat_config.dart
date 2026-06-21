@@ -13,6 +13,17 @@ class ChatConfig {
     defaultValue: _defaultWsUrl,
   );
 
+  /// HTTP base URL derivada de la WS URL.
+  /// ws://host:port/ws/chat → http://host:port
+  /// wss://host/ws/chat     → https://host
+  static String get httpBaseUrl {
+    final url = wsUrl;
+    final httpScheme = url.startsWith('wss') ? 'https' : 'http';
+    final withoutPath = url.replaceAll(RegExp(r'/ws/chat$'), '');
+    final withoutScheme = withoutPath.replaceFirst(RegExp(r'^ws[s]?://'), '');
+    return '$httpScheme://$withoutScheme';
+  }
+
   static const Duration connectTimeout = Duration(seconds: 10);
   static const Duration reconnectDelay = Duration(seconds: 3);
 }

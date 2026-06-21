@@ -146,7 +146,7 @@ class ChatManager extends ChangeNotifier {
   }
 
   void _appendAssistantChunk(Map<String, dynamic> event) {
-    final id = event['id'] as String?;
+    final id = _activeAssistantMessageId;
     final chunk = event['content'] as String? ?? '';
     if (id == null || chunk.isEmpty) return;
 
@@ -159,7 +159,7 @@ class ChatManager extends ChangeNotifier {
   }
 
   void _finishAssistantMessage(Map<String, dynamic> event) {
-    final id = event['id'] as String?;
+    final id = _activeAssistantMessageId;
     final fullContent = event['content'] as String?;
 
     if (id != null) {

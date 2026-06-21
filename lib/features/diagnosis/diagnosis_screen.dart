@@ -1,14 +1,16 @@
 import 'package:flutter/material.dart';
 import '../../core/theme.dart';
 import '../../core/services/obd_manager.dart';
+import '../../core/services/diagnosis_http_service.dart';
 import '../../core/models/obd_data.dart';
 import '../../shared/widgets/custom_button.dart';
 
 class DiagnosisScreen extends StatefulWidget {
   final ObdManager? obdManager;
+  final DiagnosisHttpService? diagnosisService;
   final VoidCallback? onBackToHome;
 
-  const DiagnosisScreen({super.key, this.obdManager, this.onBackToHome});
+  const DiagnosisScreen({super.key, this.obdManager, this.diagnosisService, this.onBackToHome});
 
   @override
   State<DiagnosisScreen> createState() => _DiagnosisScreenState();
@@ -20,8 +22,6 @@ class _DiagnosisScreenState extends State<DiagnosisScreen>
   final List<Animation<Offset>> _slideAnimations = [];
   final List<Animation<double>> _fadeAnimations = [];
   bool _scanning = false;
-
-  ObdManager get _obd => widget.obdManager!;
 
   @override
   void initState() {
@@ -64,6 +64,11 @@ class _DiagnosisScreenState extends State<DiagnosisScreen>
     _controller.forward();
   }
 
+  bool _diagnosing = false;
+
+  ObdManager get _obd => widget.obdManager!;
+  DiagnosisHttpService? get _diagnosisService => widget.diagnosisService;
+
   Future<void> _scanForCodes() async {
     setState(() => _scanning = true);
     await _obd.scanDtc();
@@ -71,6 +76,35 @@ class _DiagnosisScreenState extends State<DiagnosisScreen>
     setState(() => _scanning = false);
     _controller.reset();
     _setupAnimations();
+  }
+
+  Future<void> _diagnose() async {
+    final codes = _obd.dtcCodes;
+    if (codes.isEmpty || _diagnosisService == null) return;
+
+    setState(() => _diagnosing = true);
+
+    await _diagnosisService!.diagnose(
+      dtcCodes: codes,
+      vehicleData: _obd.vehicleData,
+    );
+
+    if (!mounted) return;
+    setState(() => _diagnosing = false);
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          _diagnosisService!.online
+              ? 'Diagnóstico completado. Revisa el Historial.'
+              : 'Diagnóstico encolado. Se enviará cuando tengas internet.',
+        ),
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: _diagnosisService!.online
+            ? AppTheme.severityLow
+            : AppTheme.severityMedium,
+      ),
+    );
   }
 
   @override
@@ -220,12 +254,46 @@ class _DiagnosisScreenState extends State<DiagnosisScreen>
                       ),
                     ),
                   const SizedBox(height: 24),
-                  if (_obd.isConnected)
+                  CustomButton(
+                    label: _scanning ? 'Escaneando...' : 'Escanear códigos',
+                    icon: Icons.refresh_outlined,
+                    isOutlined: true,
+                    onPressed:
+                        _obd.isConnected ? (_scanning ? null : _scanForCodes) : null,
+                  ),
+                  if (!_obd.isConnected)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.info_outline,
+                            size: 14,
+                            color: AppTheme.textHint,
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            'Conecta el sensor OBD para escanear',
+                            style: Theme.of(context)
+                                .textTheme
+                                .bodySmall
+                                ?.copyWith(color: AppTheme.textHint),
+                          ),
+                        ],
+                      ),
+                    ),
+                  const SizedBox(height: 12),
+                  if (_obd.dtcCodes.isNotEmpty)
                     CustomButton(
-                      label: _scanning ? 'Escaneando...' : 'Escanear códigos',
-                      icon: Icons.refresh_outlined,
-                      isOutlined: true,
-                      onPressed: _scanning ? null : _scanForCodes,
+                      label: _diagnosing
+                          ? 'Diagnosticando...'
+                          : 'Diagnosticar',
+                      icon: Icons.biotech_outlined,
+                      isOutlined: false,
+                      onPressed: _obd.isConnected
+                          ? (_diagnosing || _scanning ? null : _diagnose)
+                          : null,
                     ),
                   const SizedBox(height: 32),
                 ],

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import '../../core/theme.dart';
 import '../../core/services/obd_manager.dart';
 import '../../core/services/chat_manager.dart';
+import '../../core/services/diagnosis_queue.dart';
+import '../../core/services/diagnosis_http_service.dart';
 import '../../features/home/home_screen.dart';
 import '../../features/diagnosis/diagnosis_screen.dart';
 import '../../features/history/history_screen.dart';
@@ -10,11 +12,15 @@ import '../../features/chat/chat_screen.dart';
 class MainScaffold extends StatefulWidget {
   final ObdManager obdManager;
   final ChatManager chatManager;
+  final DiagnosisQueue diagnosisQueue;
+  final DiagnosisHttpService diagnosisHttpService;
 
   const MainScaffold({
     super.key,
     required this.obdManager,
     required this.chatManager,
+    required this.diagnosisQueue,
+    required this.diagnosisHttpService,
   });
 
   @override
@@ -46,13 +52,17 @@ class _MainScaffoldState extends State<MainScaffold> {
     HomeScreen(obdManager: widget.obdManager, onTabChanged: _onTabTapped),
     DiagnosisScreen(
       obdManager: widget.obdManager,
+      diagnosisService: widget.diagnosisHttpService,
       onBackToHome: () => _onTabTapped(0),
     ),
     ChatScreen(
       chatManager: widget.chatManager,
       obdManager: widget.obdManager,
     ),
-    HistoryScreen(onBackToHome: () => _onTabTapped(0)),
+    HistoryScreen(
+      diagnosisQueue: widget.diagnosisQueue,
+      onBackToHome: () => _onTabTapped(0),
+    ),
   ];
 
   static const List<_NavItem> _navItems = [

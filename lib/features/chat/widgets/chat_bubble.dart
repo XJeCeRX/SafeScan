@@ -15,7 +15,6 @@ class ChatBubble extends StatelessWidget {
     }
 
     final isUser = message.isUser;
-    final alignment = isUser ? Alignment.centerRight : Alignment.centerLeft;
     final backgroundColor = isUser ? AppTheme.primary : AppTheme.surface;
     final textColor = isUser ? Colors.white : AppTheme.textPrimary;
     final borderRadius = BorderRadius.only(
@@ -25,61 +24,93 @@ class ChatBubble extends StatelessWidget {
       bottomRight: Radius.circular(isUser ? 4 : 16),
     );
 
-    return Align(
-      alignment: alignment,
-      child: ConstrainedBox(
-        constraints: BoxConstraints(
-          maxWidth: MediaQuery.sizeOf(context).width * 0.82,
-        ),
-        child: Column(
-          crossAxisAlignment: isUser
-              ? CrossAxisAlignment.end
-              : CrossAxisAlignment.start,
-          children: [
-            if (isUser && message.includesSensorData)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 6),
-                child: _SensorBadge(),
-              ),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-              decoration: BoxDecoration(
-                color: backgroundColor,
-                borderRadius: borderRadius,
-                border: isUser
-                    ? null
-                    : Border.all(color: AppTheme.surfaceLight),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (message.isStreaming && message.content.isEmpty)
-                    const _TypingIndicator()
-                  else
-                    Text(
-                      message.content.isEmpty && message.isStreaming
-                          ? '...'
-                          : message.content,
-                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                        color: textColor,
-                        height: 1.4,
-                      ),
-                    ),
-                  if (message.hasError) ...[
-                    const SizedBox(height: 6),
-                    Text(
-                      message.errorMessage ?? 'No se pudo enviar el mensaje.',
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: AppTheme.severityUrgent,
-                        fontSize: 12,
-                      ),
-                    ),
-                  ],
-                ],
-              ),
+    final bubble = ConstrainedBox(
+      constraints: BoxConstraints(
+        maxWidth: MediaQuery.sizeOf(context).width * 0.75,
+      ),
+      child: Column(
+        crossAxisAlignment: isUser
+            ? CrossAxisAlignment.end
+            : CrossAxisAlignment.start,
+        children: [
+          if (isUser && message.includesSensorData)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: _SensorBadge(),
             ),
-          ],
-        ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            decoration: BoxDecoration(
+              color: backgroundColor,
+              borderRadius: borderRadius,
+              border: isUser
+                  ? null
+                  : Border.all(color: AppTheme.surfaceLight),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (message.isStreaming && message.content.isEmpty)
+                  const _TypingIndicator()
+                else
+                  SelectableText(
+                    message.content.isEmpty && message.isStreaming
+                        ? '...'
+                        : message.content,
+                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                      color: textColor,
+                      height: 1.4,
+                    ),
+                  ),
+                if (message.hasError) ...[
+                  const SizedBox(height: 6),
+                  Text(
+                    message.errorMessage ?? 'No se pudo enviar el mensaje.',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: AppTheme.severityUrgent,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+
+    final icon = Container(
+      width: 32,
+      height: 32,
+      decoration: BoxDecoration(
+        color: isUser
+            ? AppTheme.primary.withValues(alpha: 0.15)
+            : AppTheme.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: isUser
+            ? null
+            : Border.all(color: AppTheme.primary.withValues(alpha: 0.3)),
+      ),
+      child: Icon(
+        isUser ? Icons.person_rounded : Icons.smart_toy_outlined,
+        size: 18,
+        color: isUser
+            ? AppTheme.primary
+            : AppTheme.primary.withValues(alpha: 0.8),
+      ),
+    );
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        mainAxisAlignment:
+            isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          if (!isUser) ...[icon, const SizedBox(width: 8)],
+          Flexible(child: bubble),
+          if (isUser) ...[const SizedBox(width: 8), icon],
+        ],
       ),
     );
   }
