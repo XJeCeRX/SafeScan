@@ -1,3 +1,15 @@
+/// Cómo se resolvió un código DTC contra la base local.
+enum DtcMatchType {
+  /// Clave exacta en el JSON.
+  exact,
+
+  /// No había ficha exacta; orientación por familia SAE (ej. P03xx).
+  family,
+
+  /// Sin ficha ni vecinos de familia en la base.
+  unknown,
+}
+
 class DtcCode {
   final String code;
   final String description;
@@ -5,6 +17,18 @@ class DtcCode {
   final String recommendation;
   final String? explanation;
   final String? technicalDescription;
+
+  /// Tipo de resolución: exacto, familia u desconocido.
+  final DtcMatchType matchType;
+
+  /// Código hermano usado como referencia cuando [matchType] es [DtcMatchType.family].
+  final String? relatedCode;
+
+  /// Prefijo de familia SAE, p. ej. `P03`.
+  final String? familyKey;
+
+  /// Etiqueta legible de la familia, p. ej. `Fallos de encendido`.
+  final String? familyLabel;
 
   static DtcCode Function(String code)? _resolver;
 
@@ -15,6 +39,10 @@ class DtcCode {
     required this.recommendation,
     this.explanation,
     this.technicalDescription,
+    this.matchType = DtcMatchType.exact,
+    this.relatedCode,
+    this.familyKey,
+    this.familyLabel,
   });
 
   static void registerResolver(DtcCode Function(String code) resolver) {
@@ -47,8 +75,13 @@ class DtcCode {
       description: 'Código de diagnóstico $prefix',
       severity: severity,
       recommendation: 'Consulta el manual del vehículo para más información.',
+      matchType: DtcMatchType.unknown,
     );
   }
+
+  bool get isExactMatch => matchType == DtcMatchType.exact;
+  bool get isFamilyMatch => matchType == DtcMatchType.family;
+  bool get isUnknownMatch => matchType == DtcMatchType.unknown;
 
   Map<String, dynamic> toJson() => {
     'code': code,
@@ -58,6 +91,10 @@ class DtcCode {
     if (explanation != null) 'explanation': explanation,
     if (technicalDescription != null)
       'technical_description': technicalDescription,
+    'match_type': matchType.name,
+    if (relatedCode != null) 'related_code': relatedCode,
+    if (familyKey != null) 'family_key': familyKey,
+    if (familyLabel != null) 'family_label': familyLabel,
   };
 
   factory DtcCode.fromJson(Map<String, dynamic> json) {
@@ -68,7 +105,23 @@ class DtcCode {
       recommendation: json['recommendation'] as String,
       explanation: json['explanation'] as String?,
       technicalDescription: json['technical_description'] as String?,
+      matchType: _matchTypeFromJson(json['match_type'] as String?),
+      relatedCode: json['related_code'] as String?,
+      familyKey: json['family_key'] as String?,
+      familyLabel: json['family_label'] as String?,
     );
+  }
+
+  static DtcMatchType _matchTypeFromJson(String? raw) {
+    switch (raw) {
+      case 'family':
+        return DtcMatchType.family;
+      case 'unknown':
+        return DtcMatchType.unknown;
+      case 'exact':
+      default:
+        return DtcMatchType.exact;
+    }
   }
 
   static String _getPrefix(int byte1) {

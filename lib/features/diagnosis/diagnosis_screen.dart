@@ -406,6 +406,50 @@ class _SeveritySummary extends StatelessWidget {
   }
 }
 
+class _MatchDisclaimer extends StatelessWidget {
+  final DtcCode code;
+
+  const _MatchDisclaimer({required this.code});
+
+  @override
+  Widget build(BuildContext context) {
+    final isFamily = code.isFamilyMatch;
+    final color = isFamily ? AppTheme.severityMedium : AppTheme.textHint;
+    final icon = isFamily ? Icons.info_outline_rounded : Icons.help_outline_rounded;
+    final text = isFamily
+        ? 'Sin ficha exacta. Orientación por familia '
+            '${code.familyKey ?? ''} (${code.familyLabel ?? 'relacionada'})'
+            '${code.relatedCode != null ? '. Referencia: ${code.relatedCode}' : ''}.'
+        : 'Código no encontrado en la base local. La información es genérica.';
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: color.withValues(alpha: 0.35)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 18, color: color),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              text,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: color,
+                    height: 1.35,
+                  ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _DiagnosisCard extends StatefulWidget {
   final DtcCode code;
 
@@ -513,6 +557,10 @@ class _DiagnosisCardState extends State<_DiagnosisCard> {
               widget.code.description,
               style: Theme.of(context).textTheme.titleMedium,
             ),
+            if (widget.code.isFamilyMatch || widget.code.isUnknownMatch) ...[
+              const SizedBox(height: 10),
+              _MatchDisclaimer(code: widget.code),
+            ],
             AnimatedCrossFade(
               duration: const Duration(milliseconds: 300),
               crossFadeState: _expanded
