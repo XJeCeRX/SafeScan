@@ -1,18 +1,27 @@
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'core/models/obd_data.dart';
+import 'core/services/dtc_lookup_service.dart';
 import 'core/router.dart';
 import 'core/theme.dart';
 import 'core/services/obd_manager.dart';
 import 'core/services/chat_manager.dart';
 import 'core/services/diagnosis_queue.dart';
 import 'core/services/diagnosis_http_service.dart';
+import 'core/services/diagnosis_notification_service.dart';
 import 'shared/widgets/bottom_nav.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Hive.initFlutter();
 
-  final obdManager = ObdManager();
+  final dtcLookup = await DtcLookupService.load();
+  DtcCode.registerResolver(dtcLookup.resolve);
+
+  final notifications = DiagnosisNotificationService();
+  await notifications.init();
+
+  final obdManager = ObdManager(notifications: notifications);
   obdManager.init();
 
   final diagnosisQueue = DiagnosisQueue();

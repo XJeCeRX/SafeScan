@@ -1,12 +1,16 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import '../models/obd_data.dart';
+import 'diagnosis_notification_service.dart';
 import 'obd_ecu.dart';
 
 enum ObdStatus { disconnected, connecting, connected, error }
 
 class ObdManager extends ChangeNotifier {
+  ObdManager({this._notifications});
+
   final ObdEcu _ecu = ObdEcu();
+  final DiagnosisNotificationService? _notifications;
 
   ObdStatus _status = ObdStatus.disconnected;
   VehicleData _vehicleData = VehicleData.empty;
@@ -19,10 +23,12 @@ class ObdManager extends ChangeNotifier {
   List<DiscoveredDevice> _discoveredDevices = [];
   bool _isScanning = false;
   bool _isPollingRead = false;
+  bool _hasScannedDtc = false;
 
   ObdStatus get status => _status;
   VehicleData get vehicleData => _vehicleData;
   List<DtcCode> get dtcCodes => _dtcCodes;
+  bool get hasScannedDtc => _hasScannedDtc;
   String? get connectedIp => _connectedIp;
   int get connectedPort => _connectedPort;
   String? get errorMessage => _errorMessage;
@@ -90,6 +96,7 @@ class ObdManager extends ChangeNotifier {
     _status = ObdStatus.connected;
     _connectionStep = '';
     _dtcCodes = [];
+    _hasScannedDtc = false;
     notifyListeners();
   }
 
@@ -125,6 +132,7 @@ class ObdManager extends ChangeNotifier {
     _connectedIp = null;
     _vehicleData = VehicleData.empty;
     _dtcCodes = [];
+    _hasScannedDtc = false;
     _errorMessage = null;
     _connectionStep = '';
     notifyListeners();
@@ -167,7 +175,11 @@ class ObdManager extends ChangeNotifier {
     if (!_ecu.isInitialized) return;
     try {
       _dtcCodes = await _ecu.readDtc();
+      _hasScannedDtc = true;
       notifyListeners();
+      if (_dtcCodes.isNotEmpty) {
+        unawaited(_notifications?.notifyNewCodes(_dtcCodes) ?? Future.value());
+      }
     } catch (e) {
       _errorMessage = 'Error al leer códigos: $e';
       notifyListeners();

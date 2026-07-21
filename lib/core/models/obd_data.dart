@@ -1,128 +1,53 @@
+/// Cómo se resolvió un código DTC contra la base local.
+enum DtcMatchType {
+  /// Clave exacta en el JSON.
+  exact,
+
+  /// No había ficha exacta; orientación por familia SAE (ej. P03xx).
+  family,
+
+  /// Sin ficha ni vecinos de familia en la base.
+  unknown,
+}
+
 class DtcCode {
   final String code;
   final String description;
   final String severity;
   final String recommendation;
+  final String? explanation;
+  final String? technicalDescription;
+
+  /// Tipo de resolución: exacto, familia u desconocido.
+  final DtcMatchType matchType;
+
+  /// Código hermano usado como referencia cuando [matchType] es [DtcMatchType.family].
+  final String? relatedCode;
+
+  /// Prefijo de familia SAE, p. ej. `P03`.
+  final String? familyKey;
+
+  /// Etiqueta legible de la familia, p. ej. `Fallos de encendido`.
+  final String? familyLabel;
+
+  static DtcCode Function(String code)? _resolver;
 
   const DtcCode({
     required this.code,
     required this.description,
     required this.severity,
     required this.recommendation,
+    this.explanation,
+    this.technicalDescription,
+    this.matchType = DtcMatchType.exact,
+    this.relatedCode,
+    this.familyKey,
+    this.familyLabel,
   });
 
-  static const Map<String, _DtcInfo> _knownCodes = {
-    'P0300': _DtcInfo(
-      'Fallo en cilindros',
-      'urgent',
-      'Ve a un taller lo antes posible.',
-    ),
-    'P0301': _DtcInfo(
-      'Fallo en cilindro 1',
-      'urgent',
-      'Ve a un taller lo antes posible.',
-    ),
-    'P0302': _DtcInfo(
-      'Fallo en cilindro 2',
-      'urgent',
-      'Ve a un taller lo antes posible.',
-    ),
-    'P0303': _DtcInfo(
-      'Fallo en cilindro 3',
-      'urgent',
-      'Ve a un taller lo antes posible.',
-    ),
-    'P0304': _DtcInfo(
-      'Fallo en cilindro 4',
-      'urgent',
-      'Ve a un taller lo antes posible.',
-    ),
-    'P0171': _DtcInfo(
-      'Mezcla de combustible pobre',
-      'medium',
-      'Revisa el filtro de aire y los inyectores.',
-    ),
-    'P0172': _DtcInfo(
-      'Mezcla de combustible rica',
-      'medium',
-      'Revisa el filtro de aire y los inyectores.',
-    ),
-    'P0420': _DtcInfo(
-      'Eficiencia del catalizador baja',
-      'low',
-      'Puedes seguir manejando, pero agenda una revisión.',
-    ),
-    'P0430': _DtcInfo(
-      'Eficiencia del catalizador baja (banco 2)',
-      'low',
-      'Puedes seguir manejando, pero agenda una revisión.',
-    ),
-    'P0400': _DtcInfo(
-      'Fallo en EGR',
-      'medium',
-      'Revisa el sistema de recirculación de gases.',
-    ),
-    'P0401': _DtcInfo(
-      'Flujo EGR insuficiente',
-      'medium',
-      'Revisa el sistema de recirculación de gases.',
-    ),
-    'P0101': _DtcInfo(
-      'Fallo MAF / flujo de aire',
-      'medium',
-      'Revisa el sensor MAF y conductos de admisión.',
-    ),
-    'P0113': _DtcInfo(
-      'Sensor IAT / temperatura alta',
-      'low',
-      'Revisa el sensor de temperatura de admisión.',
-    ),
-    'P0128': _DtcInfo(
-      'Termostato / temperatura baja',
-      'medium',
-      'Revisa el termostato del motor.',
-    ),
-    'P0135': _DtcInfo(
-      'Calentador O2 banco 1',
-      'medium',
-      'Revisa el sensor de oxígeno banco 1.',
-    ),
-    'P0141': _DtcInfo(
-      'Calentador O2 banco 1 sensor 2',
-      'medium',
-      'Revisa el sensor de oxígeno banco 1 sensor 2.',
-    ),
-    'P0500': _DtcInfo(
-      'Sensor de velocidad',
-      'medium',
-      'Revisa el sensor de velocidad del vehículo.',
-    ),
-    'P0505': _DtcInfo(
-      'Fallo IAC / ralentí',
-      'medium',
-      'Revisa el motor de ralentí.',
-    ),
-    'P0600': _DtcInfo(
-      'Fallo comunicación PCM',
-      'urgent',
-      'Ve a un taller especializado lo antes posible.',
-    ),
-    'P0606': _DtcInfo(
-      'Fallo interno PCM',
-      'urgent',
-      'Ve a un taller especializado lo antes posible.',
-    ),
-    'P0700': _DtcInfo(
-      'Fallo transmisión',
-      'urgent',
-      'Revisa la transmisión en un taller.',
-    ),
-    'P1000': _DtcInfo(
-      'Monitoreo OBD incompleto',
-      'low',
-      'Conduce el vehículo para completar los monitores.',
-    ),
-  };
+  static void registerResolver(DtcCode Function(String code) resolver) {
+    _resolver = resolver;
+  }
 
   static DtcCode fromRawBytes(int byte1, int byte2) {
     final prefix = _getPrefix(byte1);
@@ -134,30 +59,42 @@ class DtcCode {
   }
 
   static DtcCode fromCode(String code) {
-    final known = _knownCodes[code.toUpperCase()];
-    if (known != null) {
-      return DtcCode(
-        code: code.toUpperCase(),
-        description: known.description,
-        severity: known.severity,
-        recommendation: known.recommendation,
-      );
+    final normalized = code.toUpperCase();
+    final resolver = _resolver;
+    if (resolver != null) {
+      return resolver(normalized);
     }
+    return fallback(normalized);
+  }
+
+  static DtcCode fallback(String code) {
     final prefix = code.isNotEmpty ? code[0] : 'P';
-    final sev = (prefix == 'B' || prefix == 'C') ? 'urgent' : 'medium';
+    final severity = (prefix == 'B' || prefix == 'C') ? 'urgent' : 'medium';
     return DtcCode(
-      code: code.toUpperCase(),
+      code: code,
       description: 'Código de diagnóstico $prefix',
-      severity: sev,
+      severity: severity,
       recommendation: 'Consulta el manual del vehículo para más información.',
+      matchType: DtcMatchType.unknown,
     );
   }
+
+  bool get isExactMatch => matchType == DtcMatchType.exact;
+  bool get isFamilyMatch => matchType == DtcMatchType.family;
+  bool get isUnknownMatch => matchType == DtcMatchType.unknown;
 
   Map<String, dynamic> toJson() => {
     'code': code,
     'description': description,
     'severity': severity,
     'recommendation': recommendation,
+    if (explanation != null) 'explanation': explanation,
+    if (technicalDescription != null)
+      'technical_description': technicalDescription,
+    'match_type': matchType.name,
+    if (relatedCode != null) 'related_code': relatedCode,
+    if (familyKey != null) 'family_key': familyKey,
+    if (familyLabel != null) 'family_label': familyLabel,
   };
 
   factory DtcCode.fromJson(Map<String, dynamic> json) {
@@ -166,7 +103,25 @@ class DtcCode {
       description: json['description'] as String,
       severity: json['severity'] as String,
       recommendation: json['recommendation'] as String,
+      explanation: json['explanation'] as String?,
+      technicalDescription: json['technical_description'] as String?,
+      matchType: _matchTypeFromJson(json['match_type'] as String?),
+      relatedCode: json['related_code'] as String?,
+      familyKey: json['family_key'] as String?,
+      familyLabel: json['family_label'] as String?,
     );
+  }
+
+  static DtcMatchType _matchTypeFromJson(String? raw) {
+    switch (raw) {
+      case 'family':
+        return DtcMatchType.family;
+      case 'unknown':
+        return DtcMatchType.unknown;
+      case 'exact':
+      default:
+        return DtcMatchType.exact;
+    }
   }
 
   static String _getPrefix(int byte1) {
@@ -187,13 +142,6 @@ class DtcCode {
   static String _getDigit(int byte1) {
     return '${(byte1 >> 4) & 0x03}';
   }
-}
-
-class _DtcInfo {
-  final String description;
-  final String severity;
-  final String recommendation;
-  const _DtcInfo(this.description, this.severity, this.recommendation);
 }
 
 class VehicleData {
