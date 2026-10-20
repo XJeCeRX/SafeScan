@@ -20,7 +20,7 @@ class _DashboardScreenState extends State<DashboardScreen>
   late AnimationController _controller;
   late Animation<double> _fadeAnimation;
 
-  ObdManager get _obd => widget.obdManager!;
+  ObdManager? get _obd => widget.obdManager ?? AppRouter.sharedObdManager;
 
   @override
   void initState() {
@@ -34,7 +34,7 @@ class _DashboardScreenState extends State<DashboardScreen>
       curve: Curves.easeOut,
     );
     _controller.forward();
-    _obd.scanDtc();
+    _obd?.scanDtc();
   }
 
   @override
@@ -45,11 +45,32 @@ class _DashboardScreenState extends State<DashboardScreen>
 
   @override
   Widget build(BuildContext context) {
+    final obd = _obd;
+    if (obd == null) {
+      return Scaffold(
+        appBar: AppBar(
+          backgroundColor: AppTheme.background,
+          elevation: 0,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back_ios_new_outlined),
+            onPressed: () => Navigator.pop(context),
+          ),
+          title: Text(
+            'Dashboard',
+            style: Theme.of(context).textTheme.titleLarge,
+          ),
+        ),
+        body: const Center(
+          child: Text('Servicio OBD no disponible.'),
+        ),
+      );
+    }
+
     return ListenableBuilder(
-      listenable: _obd,
+      listenable: obd,
       builder: (context, _) {
-        final data = _obd.vehicleData;
-        final dtc = _obd.dtcCodes;
+        final data = obd.vehicleData;
+        final dtc = obd.dtcCodes;
         final urgent = dtc.where((c) => c.severity == 'urgent').length;
         final total = dtc.length;
 
@@ -114,10 +135,10 @@ class _DashboardScreenState extends State<DashboardScreen>
                         onTap: () => Navigator.pushNamed(
                           context,
                           AppRouter.diagnosis,
-                          arguments: _obd,
+                          arguments: obd,
                         ),
                       )
-                    else if (_obd.hasScannedDtc)
+                    else if (obd.hasScannedDtc)
                       SuccessBanner(
                         title: 'Sin alertas detectadas',
                         message:
@@ -126,10 +147,10 @@ class _DashboardScreenState extends State<DashboardScreen>
                         onTap: () => Navigator.pushNamed(
                           context,
                           AppRouter.diagnosis,
-                          arguments: _obd,
+                          arguments: obd,
                         ),
                       ),
-                    if (total > 0 || _obd.hasScannedDtc)
+                    if (total > 0 || obd.hasScannedDtc)
                       const SizedBox(height: 24),
                     Container(
                       width: double.infinity,
@@ -259,7 +280,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                       onPressed: () => Navigator.pushNamed(
                         context,
                         AppRouter.diagnosis,
-                        arguments: _obd,
+                        arguments: obd,
                       ),
                     ),
                     const SizedBox(height: 10),

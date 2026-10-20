@@ -43,6 +43,7 @@ class AppRouter {
       case history:
         return _route(HistoryScreen(
           diagnosisQueue: diagnosisQueue,
+          diagnosisService: diagnosisHttp,
         ));
       case chat:
         if (obd != null && chatManager != null) {

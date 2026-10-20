@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../core/theme.dart';
+import '../../core/router.dart';
 import '../../core/services/obd_manager.dart';
 import '../../core/services/diagnosis_http_service.dart';
 import '../../core/models/obd_data.dart';
@@ -23,6 +24,11 @@ class _DiagnosisScreenState extends State<DiagnosisScreen>
   final List<Animation<Offset>> _slideAnimations = [];
   final List<Animation<double>> _fadeAnimations = [];
   bool _scanning = false;
+  bool _diagnosing = false;
+
+  ObdManager? get _obd => widget.obdManager ?? AppRouter.sharedObdManager;
+  DiagnosisHttpService? get _diagnosisService =>
+      widget.diagnosisService ?? AppRouter.sharedDiagnosisHttpService;
 
   @override
   void initState() {
@@ -35,7 +41,7 @@ class _DiagnosisScreenState extends State<DiagnosisScreen>
   }
 
   void _setupAnimations() {
-    final codes = _obd.dtcCodes;
+    final codes = _obd?.dtcCodes ?? [];
     if (codes.isEmpty) {
       _controller.forward();
       return;
@@ -65,23 +71,20 @@ class _DiagnosisScreenState extends State<DiagnosisScreen>
     _controller.forward();
   }
 
-  bool _diagnosing = false;
-
-  ObdManager get _obd => widget.obdManager!;
-  DiagnosisHttpService? get _diagnosisService => widget.diagnosisService;
-
   Future<void> _scanForCodes() async {
+    final obd = _obd;
+    if (obd == null) return;
     setState(() => _scanning = true);
-    await _obd.scanDtc();
+    await obd.scanDtc();
     if (!mounted) return;
     setState(() => _scanning = false);
     _controller.reset();
     _setupAnimations();
 
-    if (_obd.dtcCodes.isEmpty && _obd.hasScannedDtc) {
+    if (obd.dtcCodes.isEmpty && obd.hasScannedDtc) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text(
+        const SnackBar(
+          content: Text(
             'Escaneo completado: no se detectaron alertas ni códigos de error.',
           ),
           behavior: SnackBarBehavior.floating,
@@ -92,14 +95,17 @@ class _DiagnosisScreenState extends State<DiagnosisScreen>
   }
 
   Future<void> _diagnose() async {
-    final codes = _obd.dtcCodes;
-    if (codes.isEmpty || _diagnosisService == null) return;
+    final obd = _obd;
+    final service = _diagnosisService;
+    if (obd == null || service == null) return;
+    final codes = obd.dtcCodes;
+    if (codes.isEmpty) return;
 
     setState(() => _diagnosing = true);
 
-    await _diagnosisService!.diagnose(
+    await service.diagnose(
       dtcCodes: codes,
-      vehicleData: _obd.vehicleData,
+      vehicleData: obd.vehicleData,
     );
 
     if (!mounted) return;
@@ -108,12 +114,12 @@ class _DiagnosisScreenState extends State<DiagnosisScreen>
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
-          _diagnosisService!.online
+          service.online
               ? 'Diagnóstico completado. Revisa el Historial.'
               : 'Diagnóstico encolado. Se enviará cuando tengas internet.',
         ),
         behavior: SnackBarBehavior.floating,
-        backgroundColor: _diagnosisService!.online
+        backgroundColor: service.online
             ? AppTheme.severityLow
             : AppTheme.severityMedium,
       ),
@@ -128,28 +134,49 @@ class _DiagnosisScreenState extends State<DiagnosisScreen>
 
   @override
   Widget build(BuildContext context) {
+    final obd = _obd;
+    if (obd == null) {
+      return Scaffold(
+        appBar: AppBar(
+          backgroundColor: AppTheme.background,
+          elevation: 0,
+          title: Text(
+            'Diagnóstico',
+            style: Theme.of(context).textTheme.titleLarge,
+          ),
+        ),
+        body: const Center(
+          child: Text('Servicio OBD no disponible.'),
+        ),
+      );
+    }
+
     return ListenableBuilder(
-      listenable: _obd,
+      listenable: obd,
       builder: (context, _) {
-        final codes = _obd.dtcCodes;
+        final codes = obd.dtcCodes;
         final urgent = codes.where((c) => c.severity == 'urgent').length;
         final medium = codes.where((c) => c.severity == 'medium').length;
         final low = codes.where((c) => c.severity == 'low').length;
+        final showBackButton =
+            Navigator.canPop(context) || widget.onBackToHome != null;
 
         return Scaffold(
           appBar: AppBar(
             backgroundColor: AppTheme.background,
             elevation: 0,
-            leading: IconButton(
-              icon: const Icon(Icons.arrow_back_ios_new_outlined),
-              onPressed: () {
-                if (Navigator.canPop(context)) {
-                  Navigator.pop(context);
-                } else {
-                  widget.onBackToHome?.call();
-                }
-              },
-            ),
+            leading: showBackButton
+                ? IconButton(
+                    icon: const Icon(Icons.arrow_back_ios_new_outlined),
+                    onPressed: () {
+                      if (Navigator.canPop(context)) {
+                        Navigator.pop(context);
+                      } else {
+                        widget.onBackToHome?.call();
+                      }
+                    },
+                  )
+                : null,
             title: Text(
               'Diagnóstico',
               style: Theme.of(context).textTheme.titleLarge,
@@ -229,7 +256,7 @@ class _DiagnosisScreenState extends State<DiagnosisScreen>
                       },
                     ),
                   ],
-                  if (codes.isEmpty && !_scanning && _obd.hasScannedDtc) ...[
+                  if (codes.isEmpty && !_scanning && obd.hasScannedDtc) ...[
                     SuccessBanner(
                       title: 'Sin alertas detectadas',
                       message:
@@ -240,8 +267,8 @@ class _DiagnosisScreenState extends State<DiagnosisScreen>
                   ],
                   if (codes.isEmpty &&
                       !_scanning &&
-                      !_obd.hasScannedDtc &&
-                      _obd.isConnected) ...[
+                      !obd.hasScannedDtc &&
+                      obd.isConnected) ...[
                     const SizedBox(height: 40),
                     Center(
                       child: Column(
@@ -269,8 +296,8 @@ class _DiagnosisScreenState extends State<DiagnosisScreen>
                   ],
                   if (codes.isEmpty &&
                       !_scanning &&
-                      !_obd.hasScannedDtc &&
-                      !_obd.isConnected) ...[
+                      !obd.hasScannedDtc &&
+                      !obd.isConnected) ...[
                     const SizedBox(height: 60),
                     Center(
                       child: Column(
@@ -315,9 +342,9 @@ class _DiagnosisScreenState extends State<DiagnosisScreen>
                     icon: Icons.refresh_outlined,
                     isOutlined: true,
                     onPressed:
-                        _obd.isConnected ? (_scanning ? null : _scanForCodes) : null,
+                        obd.isConnected ? (_scanning ? null : _scanForCodes) : null,
                   ),
-                  if (!_obd.isConnected)
+                  if (!obd.isConnected)
                     Padding(
                       padding: const EdgeInsets.only(top: 8),
                       child: Row(
@@ -340,14 +367,14 @@ class _DiagnosisScreenState extends State<DiagnosisScreen>
                       ),
                     ),
                   const SizedBox(height: 12),
-                  if (_obd.dtcCodes.isNotEmpty)
+                  if (obd.dtcCodes.isNotEmpty)
                     CustomButton(
                       label: _diagnosing
                           ? 'Diagnosticando...'
                           : 'Diagnosticar',
                       icon: Icons.biotech_outlined,
                       isOutlined: false,
-                      onPressed: _obd.isConnected
+                      onPressed: obd.isConnected
                           ? (_diagnosing || _scanning ? null : _diagnose)
                           : null,
                     ),

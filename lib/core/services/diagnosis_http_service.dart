@@ -30,7 +30,10 @@ class DiagnosisHttpService extends ChangeNotifier {
   }
 
   bool _hasInternet(List<ConnectivityResult> results) {
-    return results.any((r) => r == ConnectivityResult.wifi || r == ConnectivityResult.mobile || r == ConnectivityResult.ethernet);
+    return results.any((r) =>
+        r == ConnectivityResult.wifi ||
+        r == ConnectivityResult.mobile ||
+        r == ConnectivityResult.ethernet);
   }
 
   void _onConnectivityChanged(List<ConnectivityResult> results) {
@@ -50,6 +53,17 @@ class DiagnosisHttpService extends ChangeNotifier {
 
     if (_online) {
       await _sendRequest(id, dtcCodes, vehicleData);
+    }
+  }
+
+  Future<void> retryDiagnosis(String id) async {
+    final index = queue.requests.indexWhere((r) => r.id == id);
+    if (index == -1) return;
+    final request = queue.requests[index];
+    queue.retryRequest(id);
+
+    if (_online) {
+      await _sendRequest(id, request.dtcCodes, request.vehicleData);
     }
   }
 

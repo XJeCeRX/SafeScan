@@ -111,6 +111,7 @@ class ChatManager extends ChangeNotifier {
     final type = event['type'] as String?;
 
     switch (type) {
+      case 'connection_state':
       case 'connected':
         notifyListeners();
         break;

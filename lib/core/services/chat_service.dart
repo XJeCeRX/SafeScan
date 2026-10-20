@@ -58,6 +58,10 @@ class ChatService {
     } catch (e) {
       _lastError = e.toString();
       _setState(ChatConnectionState.error);
+      _eventsController.add({
+        'type': 'error',
+        'message': 'No se pudo conectar al backend de chat: $e',
+      });
       _scheduleReconnect();
     }
   }
@@ -137,7 +141,12 @@ class ChatService {
   }
 
   void _setState(ChatConnectionState newState) {
+    if (_state == newState) return;
     _state = newState;
+    _eventsController.add({
+      'type': 'connection_state',
+      'state': newState.name,
+    });
   }
 
   Future<void> dispose() async {
