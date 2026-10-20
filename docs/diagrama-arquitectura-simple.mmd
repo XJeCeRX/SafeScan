@@ -1,0 +1,27 @@
+%% SafeScan — diagrama comprimido para exposición (1 diapositiva)
+%% Exportar: npx @mermaid-js/mermaid-cli -i diagrama-arquitectura-simple.mmd -o diagrama-arquitectura-simple.png
+
+flowchart LR
+    subgraph A["FASE A · Offline · una sola vez"]
+        direction LR
+        A1["📄 Corpus DTC<br/><b>SAE J2012</b><br/>~3.619 códigos"]
+        A2["🔍 Recuperación<br/><b>Sentence-BERT + FAISS</b><br/>contexto relevante"]
+        A3["🧠 Generación<br/><b>Gemma 2B · llama.cpp</b><br/>CPU · sin internet"]
+        A1 --> A2 --> A3
+    end
+
+    JSON["📦 obd2_explicaciones.json<br/><i>embebido en la app</i>"]
+
+    subgraph B["FASE B · En el móvil · cada consulta"]
+        direction LR
+        B1["🚗 Lectura OBD<br/><b>WiFi · ELM327</b><br/>código DTC"]
+        B2["⚡ Consulta local<br/><b>lookup en memoria</b><br/>&lt; 15 ms · sin LLM"]
+        B3["📱 Resultado<br/><b>Flutter</b><br/>urgencia + explicación"]
+        B1 --> B2 --> B3
+    end
+
+    A3 --> JSON --> B2
+
+    style A fill:#eff6ff,stroke:#2563eb,stroke-width:2px
+    style B fill:#ecfdf5,stroke:#16a34a,stroke-width:2px
+    style JSON fill:#dbeafe,stroke:#1d4ed8,stroke-width:3px

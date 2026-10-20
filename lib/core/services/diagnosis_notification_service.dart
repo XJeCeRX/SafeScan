@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 import '../models/obd_data.dart';
+import '../constants.dart';
 
 /// Notificaciones locales pensadas para conductores:
 /// - Urgente: tono corto (2 beeps), sin sirena.
@@ -12,9 +13,9 @@ import '../models/obd_data.dart';
 class DiagnosisNotificationService {
   DiagnosisNotificationService();
 
-  static const _channelUrgent = 'safescan_dtc_urgent_v1';
-  static const _channelMedium = 'safescan_dtc_medium_v1';
-  static const _channelLow = 'safescan_dtc_low_v1';
+  static const _channelUrgent = AppConstants.notificationChannelUrgent;
+  static const _channelMedium = AppConstants.notificationChannelMedium;
+  static const _channelLow = AppConstants.notificationChannelLow;
 
   final FlutterLocalNotificationsPlugin _plugin =
       FlutterLocalNotificationsPlugin();
@@ -25,52 +26,63 @@ class DiagnosisNotificationService {
   Future<void> init() async {
     if (_initialized) return;
 
-    const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
-    const initSettings = InitializationSettings(android: androidInit);
-
-    await _plugin.initialize(settings: initSettings);
-
-    if (!kIsWeb && Platform.isAndroid) {
-      final android = _plugin.resolvePlatformSpecificImplementation<
-          AndroidFlutterLocalNotificationsPlugin>();
-      await android?.requestNotificationsPermission();
-
-      await android?.createNotificationChannel(
-        const AndroidNotificationChannel(
-          _channelUrgent,
-          'Alertas urgentes del vehículo',
-          description:
-              'Fallos importantes. Tono corto de atención (no es una emergencia 911).',
-          importance: Importance.high,
-          playSound: true,
-          sound: RawResourceAndroidNotificationSound('alert_urgent'),
-          enableVibration: true,
-        ),
+    try {
+      const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
+      const darwinInit = DarwinInitializationSettings();
+      const linuxInit = LinuxInitializationSettings(defaultActionName: 'Open');
+      const initSettings = InitializationSettings(
+        android: androidInit,
+        iOS: darwinInit,
+        macOS: darwinInit,
+        linux: linuxInit,
       );
-      await android?.createNotificationChannel(
-        const AndroidNotificationChannel(
-          _channelMedium,
-          'Alertas moderadas del vehículo',
-          description: 'Códigos que conviene revisar. Tono suave.',
-          importance: Importance.defaultImportance,
-          playSound: true,
-          sound: RawResourceAndroidNotificationSound('alert_medium'),
-          enableVibration: true,
-        ),
-      );
-      await android?.createNotificationChannel(
-        const AndroidNotificationChannel(
-          _channelLow,
-          'Avisos leves del vehículo',
-          description: 'Informativos. Sin sonido para no distraer al conducir.',
-          importance: Importance.low,
-          playSound: false,
-          enableVibration: false,
-        ),
-      );
+
+      await _plugin.initialize(settings: initSettings);
+
+      if (!kIsWeb && Platform.isAndroid) {
+        final android = _plugin.resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin>();
+        await android?.requestNotificationsPermission();
+
+        await android?.createNotificationChannel(
+          const AndroidNotificationChannel(
+            _channelUrgent,
+            'Alertas urgentes del vehículo',
+            description:
+                'Fallos importantes. Tono corto de atención (no es una emergencia 911).',
+            importance: Importance.high,
+            playSound: true,
+            sound: RawResourceAndroidNotificationSound('alert_urgent'),
+            enableVibration: true,
+          ),
+        );
+        await android?.createNotificationChannel(
+          const AndroidNotificationChannel(
+            _channelMedium,
+            'Alertas moderadas del vehículo',
+            description: 'Códigos que conviene revisar. Tono suave.',
+            importance: Importance.defaultImportance,
+            playSound: true,
+            sound: RawResourceAndroidNotificationSound('alert_medium'),
+            enableVibration: true,
+          ),
+        );
+        await android?.createNotificationChannel(
+          const AndroidNotificationChannel(
+            _channelLow,
+            'Avisos leves del vehículo',
+            description: 'Informativos. Sin sonido para no distraer al conducir.',
+            importance: Importance.low,
+            playSound: false,
+            enableVibration: false,
+          ),
+        );
+      }
+
+      _initialized = true;
+    } catch (e) {
+      debugPrint('DiagnosisNotificationService: no se pudieron inicializar las notificaciones: $e');
     }
-
-    _initialized = true;
   }
 
   /// Notifica solo si hay códigos nuevos respecto al último aviso.

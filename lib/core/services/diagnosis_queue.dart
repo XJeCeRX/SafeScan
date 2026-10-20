@@ -54,7 +54,7 @@ class DiagnosisQueue extends ChangeNotifier {
     return id;
   }
 
-  void markCompleted(String id, String resultJson) {
+  Future<void> markCompleted(String id, String resultJson) async {
     final index = _requests.indexWhere((r) => r.id == id);
     if (index == -1) return;
     _requests[index] = _requests[index].copyWith(
@@ -62,28 +62,50 @@ class DiagnosisQueue extends ChangeNotifier {
       resultJson: resultJson,
       completedAt: DateTime.now(),
     );
-    _box.put(id, _requests[index].toJson());
+    await _box.put(id, _requests[index].toJson());
     notifyListeners();
   }
 
-  void markFailed(String id) {
+  Future<void> markFailed(String id) async {
     final index = _requests.indexWhere((r) => r.id == id);
     if (index == -1) return;
     _requests[index] = _requests[index].copyWith(
       status: DiagnosisStatus.failed,
       completedAt: DateTime.now(),
     );
-    _box.put(id, _requests[index].toJson());
+    await _box.put(id, _requests[index].toJson());
     notifyListeners();
   }
 
-  void markSending(String id) {
+  Future<void> markSending(String id) async {
     final index = _requests.indexWhere((r) => r.id == id);
     if (index == -1) return;
     _requests[index] = _requests[index].copyWith(
       status: DiagnosisStatus.sending,
     );
-    _box.put(id, _requests[index].toJson());
+    await _box.put(id, _requests[index].toJson());
+    notifyListeners();
+  }
+
+  Future<void> retryRequest(String id) async {
+    final index = _requests.indexWhere((r) => r.id == id);
+    if (index == -1) return;
+    _requests[index] = _requests[index].copyWith(
+      status: DiagnosisStatus.pending,
+    );
+    await _box.put(id, _requests[index].toJson());
+    notifyListeners();
+  }
+
+  Future<void> deleteRequest(String id) async {
+    _requests.removeWhere((r) => r.id == id);
+    await _box.delete(id);
+    notifyListeners();
+  }
+
+  Future<void> clearAll() async {
+    _requests.clear();
+    await _box.clear();
     notifyListeners();
   }
 }

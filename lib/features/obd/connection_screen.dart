@@ -28,7 +28,9 @@ class _ConnectionScreenState extends State<ConnectionScreen>
   String? _connectingSsid;
   String? _currentSsid;
 
-  ObdManager get _obd => widget.obdManager!;
+  static final ObdManager _fallbackObd = ObdManager();
+  ObdManager get _obd =>
+      widget.obdManager ?? AppRouter.sharedObdManager ?? _fallbackObd;
 
   bool get _supportsNativeWifiScan =>
       !kIsWeb && defaultTargetPlatform == TargetPlatform.android;

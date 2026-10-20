@@ -2,48 +2,164 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import '../../core/theme.dart';
+import '../../core/router.dart';
 import '../../core/services/diagnosis_queue.dart';
+import '../../core/services/diagnosis_http_service.dart';
 import '../../core/models/diagnosis_request.dart';
 
 class HistoryScreen extends StatelessWidget {
   final DiagnosisQueue? diagnosisQueue;
+  final DiagnosisHttpService? diagnosisService;
   final VoidCallback? onBackToHome;
 
-  const HistoryScreen({super.key, this.diagnosisQueue, this.onBackToHome});
+  const HistoryScreen({
+    super.key,
+    this.diagnosisQueue,
+    this.diagnosisService,
+    this.onBackToHome,
+  });
+
+  DiagnosisQueue? get _queue => diagnosisQueue ?? AppRouter.sharedDiagnosisQueue;
+  DiagnosisHttpService? get _service =>
+      diagnosisService ?? AppRouter.sharedDiagnosisHttpService;
+
+  Future<void> _confirmClear(BuildContext context, DiagnosisQueue queue) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppTheme.surface,
+        title: const Text('¿Borrar historial?'),
+        content: const Text(
+          'Se eliminarán todos los registros de diagnósticos guardados localmente.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancelar', style: TextStyle(color: AppTheme.textHint)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.severityUrgent,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Borrar todo'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      queue.clearAll();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: AppTheme.background,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_outlined),
-          onPressed: () {
-            if (Navigator.canPop(context)) {
-              Navigator.pop(context);
-            } else {
-              onBackToHome?.call();
-            }
-          },
+    final queue = _queue;
+    final showBack = Navigator.canPop(context) || onBackToHome != null;
+
+    if (queue == null) {
+      return Scaffold(
+        appBar: AppBar(
+          backgroundColor: AppTheme.background,
+          elevation: 0,
+          leading: showBack
+              ? IconButton(
+                  icon: const Icon(Icons.arrow_back_ios_new_outlined),
+                  onPressed: () {
+                    if (Navigator.canPop(context)) {
+                      Navigator.pop(context);
+                    } else {
+                      onBackToHome?.call();
+                    }
+                  },
+                )
+              : null,
+          title: Text('Historial', style: Theme.of(context).textTheme.titleLarge),
         ),
-        title: Text('Historial', style: Theme.of(context).textTheme.titleLarge),
-      ),
-      body: diagnosisQueue == null
-          ? const _EmptyState()
-          : ListenableBuilder(
-              listenable: diagnosisQueue!,
-              builder: (context, _) {
-                final requests = diagnosisQueue!.requests;
-                if (requests.isEmpty) return const _EmptyState();
-                return ListView.builder(
+        body: const _EmptyState(),
+      );
+    }
+
+    return ListenableBuilder(
+      listenable: queue,
+      builder: (context, _) {
+        final requests = queue.requests;
+
+        return Scaffold(
+          appBar: AppBar(
+            backgroundColor: AppTheme.background,
+            elevation: 0,
+            leading: showBack
+                ? IconButton(
+                    icon: const Icon(Icons.arrow_back_ios_new_outlined),
+                    onPressed: () {
+                      if (Navigator.canPop(context)) {
+                        Navigator.pop(context);
+                      } else {
+                        onBackToHome?.call();
+                      }
+                    },
+                  )
+                : null,
+            title: Text('Historial', style: Theme.of(context).textTheme.titleLarge),
+            actions: [
+              if (requests.isNotEmpty)
+                IconButton(
+                  tooltip: 'Borrar todo el historial',
+                  icon: const Icon(
+                    Icons.delete_sweep_outlined,
+                    color: AppTheme.textSecondary,
+                  ),
+                  onPressed: () => _confirmClear(context, queue),
+                ),
+            ],
+          ),
+          body: requests.isEmpty
+              ? const _EmptyState()
+              : ListView.builder(
                   padding: const EdgeInsets.all(24),
                   itemCount: requests.length,
-                  itemBuilder: (context, index) =>
-                      _HistoryCard(request: requests[index]),
-                );
-              },
-            ),
+                  itemBuilder: (context, index) {
+                    final req = requests[index];
+                    return Dismissible(
+                      key: Key(req.id),
+                      direction: DismissDirection.endToStart,
+                      background: Container(
+                        alignment: Alignment.centerRight,
+                        padding: const EdgeInsets.only(right: 20),
+                        margin: const EdgeInsets.only(bottom: 12),
+                        decoration: BoxDecoration(
+                          color: AppTheme.severityUrgent.withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: const Icon(
+                          Icons.delete_outline,
+                          color: AppTheme.severityUrgent,
+                          size: 26,
+                        ),
+                      ),
+                      onDismissed: (_) {
+                        queue.deleteRequest(req.id);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Diagnóstico eliminado del historial.'),
+                            behavior: SnackBarBehavior.floating,
+                            duration: Duration(seconds: 2),
+                          ),
+                        );
+                      },
+                      child: _HistoryCard(
+                        request: req,
+                        onRetry: () => _service?.retryDiagnosis(req.id),
+                        onDelete: () => queue.deleteRequest(req.id),
+                      ),
+                    );
+                  },
+                ),
+        );
+      },
     );
   }
 }
@@ -77,8 +193,14 @@ class _EmptyState extends StatelessWidget {
 
 class _HistoryCard extends StatelessWidget {
   final DiagnosisRequest request;
+  final VoidCallback? onRetry;
+  final VoidCallback? onDelete;
 
-  const _HistoryCard({required this.request});
+  const _HistoryCard({
+    required this.request,
+    this.onRetry,
+    this.onDelete,
+  });
 
   Color get _statusColor {
     switch (request.status) {
@@ -107,7 +229,7 @@ class _HistoryCard extends StatelessWidget {
   }
 
   String get _codesSummary {
-    if (request.dtcCodes.isEmpty) return 'Sin códigos';
+    if (request.dtcCodes.isEmpty) return 'Sin códigos de falla';
     return request.dtcCodes.map((c) => c.code).join(', ');
   }
 
@@ -187,8 +309,57 @@ class _HistoryCard extends StatelessWidget {
               _codesSummary,
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
                 fontFamily: 'monospace',
+                fontWeight: FontWeight.w600,
               ),
             ),
+            if (request.status == DiagnosisStatus.failed) ...[
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Text(
+                    'No se pudo conectar con el servidor.',
+                    style: Theme.of(context)
+                        .textTheme
+                        .bodySmall
+                        ?.copyWith(color: AppTheme.severityUrgent),
+                  ),
+                  const Spacer(),
+                  if (onRetry != null)
+                    InkWell(
+                      onTap: onRetry,
+                      borderRadius: BorderRadius.circular(8),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppTheme.primary.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: AppTheme.primary.withValues(alpha: 0.3),
+                          ),
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.refresh, size: 14, color: AppTheme.primary),
+                            SizedBox(width: 4),
+                            Text(
+                              'Reintentar',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: AppTheme.primary,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ],
             if (request.status == DiagnosisStatus.completed &&
                 request.resultJson != null) ...[
               const SizedBox(height: 10),
@@ -231,6 +402,7 @@ class _ResultPreview extends StatelessWidget {
                     style: Theme.of(context).textTheme.labelSmall?.copyWith(
                       color: AppTheme.primary,
                       fontFamily: 'monospace',
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
                   const SizedBox(width: 8),

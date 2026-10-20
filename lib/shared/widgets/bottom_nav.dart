@@ -61,6 +61,7 @@ class _MainScaffoldState extends State<MainScaffold> {
     ),
     HistoryScreen(
       diagnosisQueue: widget.diagnosisQueue,
+      diagnosisService: widget.diagnosisHttpService,
       onBackToHome: () => _onTabTapped(0),
     ),
   ];

@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 420" font-family="Segoe UI, Arial, sans-serif">
+  <defs>
+    <marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto">
+      <path d="M0,0 L8,3 L0,6 Z" fill="#475569"/>
+    </marker>
+  </defs>
+
+  <rect width="1100" height="420" fill="#ffffff"/>
+
+  <!-- Title -->
+  <text x="550" y="36" text-anchor="middle" font-size="20" font-weight="700" fill="#0f172a">
+    SafeScan  Arquitectura en 2 fases
+  </text>
+  <text x="550" y="58" text-anchor="middle" font-size="12" fill="#64748b">
+    La IA procesa offline � la app consulta en el m�vil sin internet
+  </text>
+
+  <!-- Phase A background -->
+  <rect x="30" y="78" width="1040" height="130" rx="12" fill="#eff6ff" stroke="#3b82f6" stroke-width="2"/>
+  <text x="50" y="102" font-size="13" font-weight="700" fill="#1d4ed8">FASE A  Preprocesamiento offline (una sola vez)</text>
+
+  <!-- Phase A boxes -->
+  <rect x="60" y="118" width="280" height="72" rx="8" fill="#ffffff" stroke="#94a3b8"/>
+  <text x="200" y="142" text-anchor="middle" font-size="13" font-weight="600" fill="#0f172a">Corpus DTC</text>
+  <text x="200" y="160" text-anchor="middle" font-size="11" fill="#475569">SAE J2012 � ~3.619 c�digos</text>
+  <text x="200" y="176" text-anchor="middle" font-size="10" fill="#64748b">Fuente normativa</text>
+
+  <rect x="400" y="118" width="280" height="72" rx="8" fill="#ffffff" stroke="#94a3b8"/>
+  <text x="540" y="142" text-anchor="middle" font-size="13" font-weight="600" fill="#0f172a">Recuperaci�n (RAG)</text>
+  <text x="540" y="160" text-anchor="middle" font-size="11" fill="#475569">Sentence-BERT + FAISS</text>
+  <text x="540" y="176" text-anchor="middle" font-size="10" fill="#64748b">Contexto del c�digo DTC</text>
+
+  <rect x="740" y="118" width="300" height="72" rx="8" fill="#ffffff" stroke="#94a3b8"/>
+  <text x="890" y="142" text-anchor="middle" font-size="13" font-weight="600" fill="#0f172a">Generaci�n con LLM</text>
+  <text x="890" y="160" text-anchor="middle" font-size="11" fill="#475569">Gemma 2B � llama.cpp � CPU</text>
+  <text x="890" y="176" text-anchor="middle" font-size="10" fill="#64748b">Explicaci�n en lenguaje simple</text>
+
+  <line x1="340" y1="154" x2="400" y2="154" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+  <line x1="680" y1="154" x2="740" y2="154" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- JSON bridge -->
+  <rect x="380" y="228" width="340" height="44" rx="8" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/>
+  <text x="550" y="248" text-anchor="middle" font-size="12" font-weight="700" fill="#1e40af">obd2_explicaciones.json</text>
+  <text x="550" y="264" text-anchor="middle" font-size="10" fill="#3730a3">JSON embebido en la app � sin LLM en runtime</text>
+
+  <line x1="890" y1="190" x2="890" y2="210" stroke="#475569" stroke-width="2"/>
+  <line x1="890" y1="210" x2="550" y2="210" stroke="#475569" stroke-width="2"/>
+  <line x1="550" y1="210" x2="550" y2="228" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- Phase B background -->
+  <rect x="30" y="292" width="1040" height="110" rx="12" fill="#ecfdf5" stroke="#22c55e" stroke-width="2"/>
+  <text x="50" y="316" font-size="13" font-weight="700" fill="#15803d">FASE B  App m�vil en tiempo real (sin internet)</text>
+
+  <!-- Phase B boxes -->
+  <rect x="60" y="328" width="280" height="58" rx="8" fill="#ffffff" stroke="#94a3b8"/>
+  <text x="200" y="350" text-anchor="middle" font-size="13" font-weight="600" fill="#0f172a">Lectura OBD</text>
+  <text x="200" y="368" text-anchor="middle" font-size="11" fill="#475569">WiFi/TCP � ELM327 � Flutter</text>
+
+  <rect x="400" y="328" width="280" height="58" rx="8" fill="#ffffff" stroke="#94a3b8"/>
+  <text x="540" y="350" text-anchor="middle" font-size="13" font-weight="600" fill="#0f172a">Consulta local</text>
+  <text x="540" y="368" text-anchor="middle" font-size="11" fill="#475569">Lookup O(1) � &lt; 15 ms</text>
+
+  <rect x="740" y="328" width="300" height="58" rx="8" fill="#ffffff" stroke="#94a3b8"/>
+  <text x="890" y="350" text-anchor="middle" font-size="13" font-weight="600" fill="#0f172a">Resultado al conductor</text>
+  <text x="890" y="368" text-anchor="middle" font-size="11" fill="#475569">Urgencia + explicaci�n + acci�n</text>
+
+  <line x1="340" y1="357" x2="400" y2="357" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+  <line x1="680" y1="357" x2="740" y2="357" stroke="#475569" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- JSON to lookup -->
+  <line x1="550" y1="272" x2="550" y2="292" stroke="#2563eb" stroke-width="2"/>
+  <line x1="550" y1="292" x2="540" y2="292" stroke="#2563eb" stroke-width="2"/>
+  <line x1="540" y1="292" x2="540" y2="328" stroke="#2563eb" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- Footer note -->
+  <text x="550" y="408" text-anchor="middle" font-size="10" fill="#64748b">
+    Idea clave: costo de IA una sola vez offline � consultas instant�neas en el veh�culo
+  </text>
+</svg>

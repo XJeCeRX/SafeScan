@@ -1,0 +1,58 @@
+%% Diagrama Mermaid — SafeScan (editable / exportable con mermaid-cli)
+%% Uso: npx @mermaid-js/mermaid-cli -i diagrama-arquitectura.mmd -o figura-arquitectura.png
+
+flowchart TB
+    subgraph FASE_A["Fase A — Preprocesamiento offline (3 638 códigos DTC)"]
+        direction TB
+
+        subgraph ETAPA1["Etapa 1 — Recuperación (RAG)"]
+            CORPUS["Corpus DTC<br/>(3 638 códigos)"]
+            CONCAT["Concatenación<br/>código + descripción técnica"]
+            EMB["Embeddings<br/>384 dimensiones"]
+            FAISS["Índice FAISS<br/>IndexFlatIP"]
+            BUSQUEDA["Búsqueda en 2 niveles:<br/>1) match exacto DTC<br/>2) top-3 similitud semántica"]
+
+            CORPUS --> CONCAT --> EMB --> FAISS --> BUSQUEDA
+        end
+
+        subgraph ETAPA2["Etapa 2 — Construcción del prompt"]
+            SKILLS["Plantillas JSON (skills):<br/>conductor / sensores / SAE"]
+            COT["Chain-of-thought"]
+            JSON_FMT["Formato JSON fijo<br/>para la app móvil"]
+            SKILLS --> COT --> JSON_FMT
+        end
+
+        subgraph ETAPA3["Etapa 3 — Inferencia Gemma 4"]
+            LLAMA["llama.cpp<br/>ctx 2048 · 4 hilos · T=0.2"]
+            GEMMA["Gemma 4<br/>CPU / CUDA"]
+            VALID["Validación JSON<br/>inválido → fallback amarillo"]
+            LLAMA --> GEMMA --> VALID
+        end
+
+        JSON["obd2_explicaciones.json<br/>(título, explicación, acción,<br/>urgencia, descripción técnica)"]
+
+        BUSQUEDA --> ETAPA2
+        JSON_FMT --> ETAPA3
+        VALID --> JSON
+    end
+
+    subgraph FASE_B["Fase B — App móvil en tiempo de ejecución (offline)"]
+        direction LR
+
+        M1["Módulo 1<br/>WiFi/TCP ELM327 (Kotlin)<br/>Modo 01 + Modo 03 · cada 5 s"]
+        M2["Módulo 2<br/>Lookup O(1) en memoria<br/>latencia &lt; 15 ms"]
+        M3["Módulo 3<br/>UI Flutter<br/>semáforo + descripción técnica"]
+
+        M1 -->|"código DTC"| M2 -->|"resultado"| M3
+    end
+
+    JSON -->|"asset embebido"| M2
+
+    FUTURO["Capacidad reservada:<br/>sensores en tiempo real →<br/>ajuste dinámico de urgencia"]
+    M1 -.-> FUTURO
+    FUTURO -.-> M2
+
+    style FASE_A fill:#eff6ff,stroke:#3b82f6
+    style FASE_B fill:#f0fdf4,stroke:#22c55e
+    style JSON fill:#dbeafe,stroke:#2563eb,stroke-width:2px
+    style FUTURO fill:#fff7ed,stroke:#f97316,stroke-dasharray:5 5

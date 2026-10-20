@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 520" font-family="Segoe UI, Arial, sans-serif">
+  <rect width="900" height="520" fill="#ffffff"/>
+
+  <!-- Title -->
+  <text x="450" y="42" text-anchor="middle" font-size="22" font-weight="700" fill="#0f172a">Stack tecnol�gico � SafeScan</text>
+  <text x="450" y="64" text-anchor="middle" font-size="12" fill="#64748b">Versi�n simplificada � offline + m�vil</text>
+
+  <!-- Row 1: Datos -->
+  <rect x="40" y="88" width="820" height="58" rx="10" fill="#eff6ff" stroke="#93c5fd"/>
+  <text x="78" y="114" font-size="18" fill="#2563eb">??</text>
+  <text x="108" y="112" font-size="14" font-weight="700" fill="#1e3a8a">Datos</text>
+  <text x="108" y="130" font-size="11" fill="#475569">Corpus SAE J2012 � 3.619 c�digos DTC</text>
+  <text x="520" y="122" font-size="12" fill="#334155">Fuente normativa oficial</text>
+
+  <!-- Row 2: RAG -->
+  <rect x="40" y="158" width="820" height="58" rx="10" fill="#ecfdf5" stroke="#86efac"/>
+  <text x="78" y="184" font-size="18" fill="#16a34a">??</text>
+  <text x="108" y="182" font-size="14" font-weight="700" fill="#14532d">Recuperaci�n (RAG)</text>
+  <text x="108" y="200" font-size="11" fill="#475569">Sentence-BERT � 384d � FAISS IndexFlatIP</text>
+  <text x="520" y="192" font-size="12" fill="#334155">100% precisi�n � 0,22 ms</text>
+
+  <!-- Row 3: LLM -->
+  <rect x="40" y="228" width="820" height="58" rx="10" fill="#fff7ed" stroke="#fdba74"/>
+  <text x="78" y="254" font-size="18" fill="#ea580c">??</text>
+  <text x="108" y="252" font-size="14" font-weight="700" fill="#9a3412">Generaci�n (LLM)</text>
+  <text x="108" y="270" font-size="11" fill="#475569">Gemma � llama.cpp � CPU local</text>
+  <text x="520" y="262" font-size="12" fill="#334155">Offline � sin GPU ni internet</text>
+
+  <!-- Row 4: Salida -->
+  <rect x="40" y="298" width="820" height="58" rx="10" fill="#dbeafe" stroke="#60a5fa"/>
+  <text x="78" y="324" font-size="18" fill="#1d4ed8">??</text>
+  <text x="108" y="322" font-size="14" font-weight="700" fill="#1e40af">Salida</text>
+  <text x="108" y="340" font-size="11" fill="#475569">obd2_explicaciones.json embebido</text>
+  <text x="520" y="332" font-size="12" fill="#334155">Lookup &lt; 15 ms en la app</text>
+
+  <!-- Row 5: App -->
+  <rect x="40" y="368" width="820" height="58" rx="10" fill="#f0fdfa" stroke="#5eead4"/>
+  <text x="78" y="394" font-size="18" fill="#0d9488">??</text>
+  <text x="108" y="392" font-size="14" font-weight="700" fill="#115e59">App m�vil</text>
+  <text x="108" y="410" font-size="11" fill="#475569">Flutter + Kotlin (WiFi Android)</text>
+  <text x="520" y="402" font-size="12" fill="#334155">UI + consulta local offline</text>
+
+  <!-- Row 6: Veh�culo -->
+  <rect x="40" y="438" width="820" height="58" rx="10" fill="#f8fafc" stroke="#cbd5e1"/>
+  <text x="78" y="464" font-size="18" fill="#475569">??</text>
+  <text x="108" y="462" font-size="14" font-weight="700" fill="#0f172a">Veh�culo</text>
+  <text x="108" y="480" font-size="11" fill="#475569">ELM327 � WiFi/TCP � OBD-II (SAE J1979)</text>
+  <text x="520" y="472" font-size="12" fill="#334155">Modo 01 sensores � Modo 03 DTC</text>
+
+</svg>
