@@ -32,6 +32,12 @@ set(CMAKE_CXX_FLAGS_PROFILE "${CMAKE_CXX_FLAGS_RELEASE}")
 # Use Unicode for all projects.
 add_definitions(-DUNICODE -D_UNICODE)
 
+# Include ATL headers if using MSVC so plugins like flutter_local_notifications find atlbase.h
+file(GLOB MSVC_ATL_INCLUDES "C:/Program Files/Microsoft Visual Studio/*/Community/VC/Tools/MSVC/*/atlmfc/include")
+if(MSVC_ATL_INCLUDES)
+  include_directories(SYSTEM ${MSVC_ATL_INCLUDES})
+endif()
+
 # Compilation settings that should be applied to most targets.
 #
 # Be cautious about adding new options here, as plugins use this function by
